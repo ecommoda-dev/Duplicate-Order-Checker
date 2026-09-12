@@ -15,7 +15,7 @@ database_id   = "90db62d3-bd7e-4d92-912b-10fc78eeb565"
 [vars]
 SHOP_DOMAIN   = "6c7e1a-53.myshopify.com"
 DUPLICATE_TAG = "Duplicate"
-# DUPLICATE_NOTE_PREFIX = "تنبيه ⚠ أوردرات مكررة محتملة، برجاء التأكد: "
+DUPLICATE_NOTE_PREFIX = "تنبيه ⚠ أوردرات مكررة محتملة، برجاء التأكد: "
 
 # ── Secrets (Dashboard فقط، وبعد أي إضافة → Promote) ──
 #   WORKER_SECRET · CLIENT_ID · CLIENT_SECRET · SHOPIFY_WEBHOOK_SECRET
