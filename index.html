@@ -1,0 +1,2259 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<!-- skills: html-builder v7.1.0 · worker-builder v3.1.0 · constants v2.2.0 — 12-09-2026 -->
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Duplicate Order Checker — سجل فحص الأوردرات المكررة</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════
+     §STYLES — التوكنز + كل CSS الأداة
+     ══════════════════════════════════════════════════════ -->
+<style>
+:root {
+  --bg:             #f3f4f6;
+  --surface:        #ffffff;
+  --surface-2:      #f9fafb;
+  --border:         #e5e7eb;
+  --border-strong:  #d1d5db;
+  --text-primary:   #111827;
+  --text-secondary: #6b7280;
+  --text-muted:     #6b7280;
+  --text-mid:       #374151;
+  --accent:         #2563eb;
+  --accent-light:   #eff6ff;
+  --accent-dark:    #1d4ed8;
+  --green:          #16a34a;
+  --green-light:    #f0fdf4;
+  --green-border:   #86efac;
+  --red:            #dc2626;
+  --red-light:      #fef2f2;
+  --red-border:     #fca5a5;
+  --amber:          #d97706;
+  --amber-light:    #fffbeb;
+  --amber-border:   #fde68a;
+  --purple:         #7c3aed;
+  --purple-light:   #f5f3ff;
+  --purple-border:  #c4b5fd;
+  --surface-hover:      #f0f4f8;
+  --neutral-dark:       #1a1d27;
+  --on-accent:          #ffffff;
+  --accent-border:      #bfdbfe;
+  --accent-hover:       #dbeafe;
+  --accent-hover-border:#93c5fd;
+  --green-dark:         #15803d;
+  --red-dark:           #b91c1c;
+  --amber-dark:         #92400e;
+  --purple-dark:        #4c1d95;
+  --radius:         12px;
+  --radius-sm:      8px;
+  --shadow:         0 1px 3px rgba(0,0,0,.07), 0 1px 2px rgba(0,0,0,.04);
+  --font-body:      'Noto Sans Arabic', -apple-system, sans-serif;
+  --font-mono:      'Noto Sans Arabic', -apple-system, sans-serif;
+  /* Tier M — الأداة فيها جدول سجل رئيسي (٨ أعمدة) */
+  --container-max:  1200px;
+}
+
+/* ── Base ─────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text-primary);
+  min-height: 100vh;
+  padding: 12px;
+  direction: rtl;
+}
+.container { max-width: var(--container-max); margin: 0 auto; }
+
+/* ── Header Shell ─────────────────────────────────────── */
+.app-header {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 16px;
+  margin-bottom: 12px;
+  box-shadow: var(--shadow);
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; flex-wrap: wrap;
+}
+.app-title           { display: flex; align-items: center; gap: 10px; }
+.app-icon            { font-size: 22px; }
+.app-title-text h1   { font-size: 15px; font-weight: 700; line-height: 1.2; }
+.app-title-text span { font-size: 11px; color: var(--text-muted); }
+.app-header-btns     { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+
+.hbtn {
+  display: flex; align-items: center; gap: 5px;
+  padding: 6px 12px;
+  border: 1.5px solid var(--border-strong);
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+  font-family: inherit; font-size: 12px; font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer; transition: all .15s; white-space: nowrap;
+}
+.hbtn:hover    { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+.hbtn:disabled { opacity: .5; cursor: not-allowed; }
+.hbtn.settings-configured { border-color: var(--green); color: var(--green); background: var(--green-light); }
+.hbtn.ver-btn {
+  border-color: var(--accent-border); color: var(--accent-dark); background: var(--accent-light);
+  font-family: var(--font-mono); font-weight: 700;
+}
+.hbtn.ver-btn:hover { background: var(--accent-hover); border-color: var(--accent-hover-border); color: var(--accent-dark); }
+.hbtn.active-user   { border-color: var(--green); color: var(--green); background: var(--green-light); }
+.hbtn.active-user:hover { border-color: var(--red); color: var(--red); background: var(--red-light); }
+.hbtn.warn { border-color: var(--amber); color: var(--amber); background: var(--amber-light); }
+.hbtn.warn:hover { background: var(--amber); color: var(--on-accent); border-color: var(--amber); }
+
+/* ── Settings Modal ───────────────────────────────────── */
+.settings-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.35);
+  z-index: 600; display: none; align-items: center; justify-content: center; padding: 20px;
+}
+.settings-overlay.open { display: flex; }
+.settings-modal {
+  background: var(--surface); border-radius: var(--radius);
+  width: 100%; max-width: 460px; max-height: 88vh;
+  display: flex; flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0,0,0,.18);
+  animation: modalIn .2s ease; overflow: hidden;
+}
+@keyframes modalIn { from { transform: scale(.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.settings-modal-hdr {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 18px; border-bottom: 1px solid var(--border);
+  font-size: 15px; font-weight: 700; flex-shrink: 0;
+}
+.modal-close-x {
+  background: var(--red-light);
+  border: 1.5px solid var(--red-border);
+  color: var(--red);
+  font-size: 14px; font-weight: 700; line-height: 1;
+  padding: 4px 11px; border-radius: var(--radius-sm);
+  font-family: inherit; cursor: pointer; transition: all .15s;
+}
+.modal-close-x:hover { background: var(--red); color: var(--on-accent); border-color: var(--red); }
+.settings-modal-body { padding: 20px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
+.settings-field  { display: flex; flex-direction: column; gap: 5px; }
+.settings-label  { font-size: 10px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .5px; }
+.settings-input  {
+  border: 1.5px solid var(--border-strong); border-radius: var(--radius-sm);
+  padding: 9px 11px; font-family: var(--font-mono); font-size: 12px;
+  color: var(--text-primary); outline: none; width: 100%;
+  direction: ltr; background: var(--surface); transition: border-color .15s;
+}
+.settings-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,.08); }
+.settings-static {
+  font-family: var(--font-mono); font-size: 11.5px; direction: ltr;
+  color: var(--text-secondary); background: var(--surface-2);
+  border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 10px;
+  word-break: break-all;
+}
+.settings-modal-ftr { padding: 12px 18px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; flex-shrink: 0; }
+.btn-modal-cancel { padding: 8px 14px; background: transparent; color: var(--text-secondary); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); font-family: inherit; font-size: 12px; cursor: pointer; }
+.btn-modal-cancel:hover { color: var(--text-primary); }
+.btn-modal-save { padding: 8px 18px; background: var(--accent); color: var(--on-accent); border: none; border-radius: var(--radius-sm); font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer; transition: background .15s; }
+.btn-modal-save:hover { background: var(--accent-dark); }
+.btn { font-family: var(--font-body); cursor: pointer; }
+.btn-outline {
+  border: 1px solid var(--border-strong); background: var(--surface);
+  color: var(--text-primary); border-radius: var(--radius-sm);
+  font-size: 12px; font-weight: 700; padding: 8px 14px; transition: all .15s;
+}
+.btn-outline:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+.btn-sm { padding: 6px 12px; font-size: 11.5px; }
+.diag-row { display: flex; gap: 6px; align-items: flex-start; padding: 3px 0; }
+.diag-row .dg-ico { flex-shrink: 0; }
+.diag-row .dg-lbl { font-weight: 700; white-space: nowrap; }
+.diag-row .dg-det { color: var(--text-secondary); word-break: break-word; direction: ltr; text-align: right; }
+
+/* ── Modal Shell — About / Changelog ──────────────────── */
+.eco-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.45);
+  z-index: 600; display: none; align-items: center; justify-content: center; padding: 20px;
+}
+.eco-overlay.open { display: flex; }
+.eco-modal {
+  background: var(--surface); border-radius: var(--radius);
+  width: 90%;
+  max-width: calc(var(--container-max) * .9);
+  max-height: 85vh;
+  display: flex; flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0,0,0,.18); overflow: hidden;
+}
+.eco-modal-hdr {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 18px; border-bottom: 1px solid var(--border);
+  font-size: 14px; font-weight: 700;
+  background: var(--surface);
+  flex-shrink: 0;
+}
+.eco-modal-body { overflow-y: auto; padding: 16px 20px; flex: 1; }
+
+/* ── Changelog ────────────────────────────────────────── */
+.cl-version-block { margin-bottom: 4px; }
+.cl-version-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.cl-ver-badge {
+  font-family: var(--font-mono); font-size: 12px; font-weight: 700;
+  padding: 3px 10px; border-radius: 5px;
+  background: var(--accent-light); color: var(--accent-dark); border: 1px solid var(--accent-border); direction: ltr;
+}
+.cl-ver-badge.old { background: var(--surface-2); color: var(--text-secondary); border-color: var(--border-strong); }
+.cl-ver-date { font-size: 12px; color: var(--text-muted); font-family: var(--font-mono); direction: ltr; }
+.cl-items { list-style: none; display: flex; flex-direction: column; gap: 5px; padding-bottom: 16px; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+.cl-version-block:last-child .cl-items { border-bottom: none; padding-bottom: 0; margin-bottom: 0; }
+.cl-item { display: flex; gap: 8px; font-size: 13px; align-items: flex-start; }
+.cl-tag  { font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 4px; white-space: nowrap; flex-shrink: 0; align-self: flex-start; margin-top: 2px; }
+.cl-tag.new    { background: var(--green-light); color: var(--green-dark); }
+.cl-tag.fix    { background: var(--red-light); color: var(--red); }
+.cl-tag.change { background: var(--amber-light); color: var(--amber-dark); }
+
+/* ── About ────────────────────────────────────────────── */
+.about-sec { border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 10px; overflow: hidden; }
+.about-sec > summary {
+  padding: 11px 14px; font-weight: 700; font-size: 14px;
+  background: var(--surface-2); cursor: pointer; user-select: none;
+}
+.about-sec-body { padding: 14px; display: flex; flex-direction: column; gap: 10px; font-size: 13px; line-height: 1.75; }
+.about-sec-body h4 { font-size: 12px; font-weight: 700; color: var(--accent); margin-top: 4px; }
+.about-sec-body ol,
+.about-sec-body ul { padding-inline-start: 20px; display: flex; flex-direction: column; gap: 4px; }
+.about-sec-body code {
+  font-family: var(--font-mono); font-size: 11px;
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 4px; padding: 1px 5px; direction: ltr; display: inline-block;
+}
+.about-sec-body table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.about-sec-body th,
+.about-sec-body td    { padding: 6px 8px; border-bottom: 1px solid var(--border); text-align: right; }
+
+/* ── Toast — الأربعة الرسمية معرّفة كلها ─────────────── */
+.toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
+.toast { padding: 10px 16px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 600; color: var(--on-accent); box-shadow: 0 4px 12px rgba(0,0,0,.2); animation: toastIn .3s ease; max-width: 340px; line-height: 1.6; }
+@keyframes toastIn { from { transform: translateX(100%); opacity: 0; } to { transform: none; opacity: 1; } }
+.toast-success { background: var(--green); }
+.toast-error   { background: var(--red); }
+.toast-warning { background: var(--amber); }
+.toast-neutral { background: var(--neutral-dark); }
+
+/* ── Login Overlay ────────────────────────────────────── */
+.login-overlay {
+  position: fixed; inset: 0;
+  background: var(--bg);
+  z-index: 500;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px; overflow-y: auto;
+}
+.login-overlay.hidden { display: none; }
+.login-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 22px 70px rgba(0,0,0,.22);
+  width: 100%; max-width: 420px;
+  padding: 28px 26px 24px;
+  position: relative;
+  animation: loginIn .18s ease;
+}
+@keyframes loginIn {
+  from { transform: translateY(6px) scale(.985); opacity: 0; }
+  to   { transform: translateY(0)   scale(1);    opacity: 1; }
+}
+.login-settings-btn {
+  position: absolute; top: 16px; left: 16px;
+  display: inline-flex; align-items: center; gap: 5px;
+  min-height: 38px; padding: 8px 12px;
+  border-radius: 9px; border: 1.5px solid;
+  background: var(--surface);
+  font-family: var(--font-body); font-size: 12px; font-weight: 800;
+  cursor: pointer; transition: all .15s; white-space: nowrap;
+}
+.login-settings-btn.ready   { border-color: var(--green);  color: var(--green);  background: var(--green-light); }
+.login-settings-btn.missing { border-color: var(--red);    color: var(--red);    background: var(--red-light);   }
+.login-settings-btn:hover   { transform: translateY(-1px); }
+.login-version {
+  position: absolute; top: 58px; left: 17px;
+  font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+  color: var(--text-muted); letter-spacing: .2px; user-select: none;
+}
+.login-top {
+  padding-top: 12px;
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+}
+.login-icon  { font-size: 34px; line-height: 1; margin-bottom: 14px; }
+.login-title { font-size: 19px; font-weight: 900; letter-spacing: -.1px; }
+.login-desc  { font-size: 13px; color: var(--text-secondary); font-weight: 600; margin-top: 5px; }
+.login-sub   {
+  min-height: 22px; margin-top: 4px;
+  color: var(--text-muted); font-size: 12px; font-weight: 600;
+  text-align: center; line-height: 1.7;
+}
+.login-body  { margin-top: 22px; display: flex; flex-direction: column; gap: 14px; }
+.login-field { display: flex; flex-direction: column; gap: 7px; }
+.login-field select {
+  width: 100%; height: 58px;
+  border: 1.5px solid var(--border-strong); border-radius: 10px;
+  background: var(--surface); color: var(--text-primary);
+  font-family: var(--font-body); font-size: 14px; font-weight: 600;
+  outline: none; padding: 0 14px;
+  transition: border-color .15s, box-shadow .15s;
+}
+.login-field select:focus    { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,.08); }
+.login-field select:disabled { opacity: .68; cursor: not-allowed; background: var(--surface-2); }
+.login-status { min-height: 18px; font-size: 12px; font-weight: 700; color: var(--text-muted); line-height: 1.5; }
+.login-status.info  { color: var(--accent); }
+.login-status.warn  { color: var(--amber);  }
+.login-status.error { color: var(--red);    }
+.pin-zone { display: none; flex-direction: column; gap: 12px; animation: pinZoneIn .16s ease; }
+.pin-zone.visible { display: flex; }
+@keyframes pinZoneIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+.pin-label { font-size: 12px; font-weight: 800; color: var(--text-secondary); text-align: right; margin-top: 2px; }
+.pin-slots { display: flex; justify-content: center; gap: 9px; direction: ltr; }
+.pin-slot {
+  width: 48px; height: 48px;
+  border-radius: 10px; border: 1.5px solid var(--border-strong);
+  background: var(--surface-2);
+  display: grid; place-items: center;
+  font-family: var(--font-mono); font-size: 22px; font-weight: 800;
+  color: var(--accent); transition: all .15s; user-select: none;
+}
+.pin-slot.empty::before  { content: '_';  transform: translateY(-2px); color: var(--accent); opacity: .75; font-size: 18px; }
+.pin-slot.filled         { background: var(--accent-light); border-color: var(--accent); }
+.pin-slot.filled::before { content: '●'; font-size: 17px; transform: translateY(-1px); color: var(--accent); opacity: 1; }
+.pin-slot.error          { border-color: var(--red); background: var(--red-light); }
+.pin-slot.error::before  { color: var(--red); }
+.pin-slots.shake { animation: pinShake .34s ease; }
+@keyframes pinShake {
+  0%,100% { transform: translateX(0);  }
+  22%     { transform: translateX(-5px); }
+  44%     { transform: translateX( 5px); }
+  66%     { transform: translateX(-3px); }
+  88%     { transform: translateX( 3px); }
+}
+.pin-keypad { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin: 1px 0 0; }
+.pin-key {
+  min-height: 49px; border-radius: 10px;
+  border: 1.5px solid var(--border-strong); background: var(--surface);
+  color: var(--text-primary);
+  font-family: var(--font-mono); font-size: 18px; font-weight: 800;
+  cursor: pointer; transition: background .12s, color .12s, border-color .12s, transform .06s;
+  display: flex; align-items: center; justify-content: center;
+}
+.pin-key:hover:not(:disabled)  { background: var(--accent-light); border-color: var(--accent); color: var(--accent); }
+.pin-key:active:not(:disabled) { transform: translateY(1px); }
+.pin-key.utility {
+  color: var(--red); background: var(--red-light); border-color: var(--red-border);
+  font-family: var(--font-body); font-size: 13px; font-weight: 900;
+}
+.pin-key.utility:hover:not(:disabled) { background: var(--red); color: var(--on-accent); border-color: var(--red); }
+.pin-key:disabled { opacity: .55; cursor: not-allowed; }
+.login-alert {
+  display: none; min-height: 38px;
+  border-radius: 10px; border: 1px solid var(--red-border);
+  background: var(--red-light); color: var(--red);
+  padding: 9px 12px; font-size: 12px; font-weight: 800;
+  text-align: center; line-height: 1.6;
+}
+.login-alert.visible { display: block; }
+.login-primary {
+  display: none; align-items: center; justify-content: center; gap: 7px;
+  width: 100%; min-height: 58px; margin-top: 1px;
+  border: none; border-radius: 10px;
+  background: var(--accent); color: var(--on-accent);
+  font-family: var(--font-body); font-size: 15px; font-weight: 900;
+  cursor: pointer; transition: background .15s, opacity .15s, transform .06s;
+}
+.login-primary.visible          { display: inline-flex; }
+.login-primary:hover:not(:disabled)  { background: var(--accent-dark); }
+.login-primary:active:not(:disabled) { transform: translateY(1px); }
+.login-primary:disabled { opacity: .56; cursor: not-allowed; }
+.login-secondary {
+  display: none; align-items: center; justify-content: center;
+  width: 100%; min-height: 42px;
+  border-radius: 10px; border: 1px solid var(--border-strong);
+  background: var(--surface); color: var(--text-secondary);
+  font-family: var(--font-body); font-size: 12px; font-weight: 800;
+  cursor: pointer; transition: all .15s;
+}
+.login-secondary.visible { display: inline-flex; }
+.login-secondary:hover   { border-color: var(--accent); background: var(--accent-light); color: var(--accent); }
+
+/* ══ Unified Section — الفلاتر + الجدول في كارت واحد ══
+   ممنوع overflow:hidden هنا أو على أي أب لقوائم الفلاتر — بيقص الـ ms-menu */
+.unified-section {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 16px;
+}
+.section-divider { border-top: 1px solid var(--border); }
+
+.flt-header {
+  display: flex; align-items: center; justify-content: space-between; padding: 10px 16px;
+  background: var(--surface-2); cursor: pointer; user-select: none; transition: background .12s;
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+.flt-header:hover { background: var(--surface-hover); }
+.flt-header-right { display: flex; align-items: center; gap: 10px; }
+.flt-icon { width: 34px; height: 22.5px; color: var(--text-muted); transition: color .2s; flex-shrink: 0; }
+.flt-icon.active { color: var(--accent); }
+.flt-toggle { font-size: 13px; color: var(--text-muted); transition: transform .25s; }
+.flt-toggle.open { transform: rotate(180deg); }
+.flt-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+.flt-body.collapsed { display: none; }
+.flt-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+.flt-g { display: flex; flex-direction: column; gap: 3px; }
+.flt-label { font-size: 10px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .4px; white-space: nowrap; }
+
+.clear-btn {
+  display: flex; align-items: center; gap: 5px; padding: 6px 12px; border-radius: var(--radius-sm);
+  font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer; transition: all .15s;
+  white-space: nowrap; height: 34px;
+  border: 1px solid var(--red-border); color: var(--red); background: var(--red-light);
+}
+.clear-btn:hover { background: var(--red); color: var(--on-accent); border-color: var(--red); }
+.clear-btn.inactive { border-color: var(--border); color: var(--text-muted); background: var(--surface-2); cursor: not-allowed; opacity: .6; }
+.clear-btn.inactive:hover { background: var(--surface-2); color: var(--text-muted); border-color: var(--border); }
+
+.search-wrap { position: relative; max-width: 280px; flex: 1; min-width: 200px; }
+.search-input {
+  width: 100%; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+  padding: 8px 12px 8px 34px;
+  font-family: inherit; font-size: 13px; height: 36px; box-sizing: border-box; outline: none;
+  background: var(--surface); transition: border-color .15s, background .15s;
+}
+.search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(37,99,235,.08); }
+.search-input.has-value { border-color: var(--accent); background: var(--accent-light); }
+.search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 14px; color: var(--text-muted); pointer-events: none; }
+
+/* multi-select */
+.ms-wrap { position: relative; }
+.ms-btn {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 170px; height: 34px;
+  padding: 6px 10px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface);
+  font-family: inherit; font-size: 12px; font-weight: 600; color: var(--text-primary); cursor: pointer;
+  transition: all .15s; white-space: nowrap;
+}
+.ms-btn:hover { border-color: var(--accent); }
+.ms-btn.has-selection { border-color: var(--accent); color: var(--accent-dark); background: var(--accent-light); }
+.ms-btn.open { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(37,99,235,.08); }
+.ms-btn .ms-count {
+  font-family: var(--font-mono); font-size: 10.5px; font-weight: 700; color: var(--on-accent);
+  background: var(--accent); border-radius: 20px; padding: 1px 7px; min-width: 18px; text-align: center;
+}
+.ms-btn .ms-arrow { font-size: 9px; color: var(--text-muted); transition: transform .2s; flex-shrink: 0; }
+.ms-btn.open .ms-arrow { transform: rotate(180deg); }
+.ms-menu {
+  position: absolute; top: calc(100% + 4px); right: 0; z-index: 200; width: 260px; max-width: 85vw;
+  background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+  box-shadow: 0 8px 28px rgba(0,0,0,.14); display: none; flex-direction: column; overflow: hidden;
+}
+.ms-menu.open { display: flex; }
+.ms-ftr-top {
+  display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  padding: 7px 10px; border-bottom: 1px solid var(--border); background: var(--surface-2);
+}
+.ms-ftr-clear { font-size: 11.5px; font-weight: 700; color: var(--red); background: none; border: none; cursor: pointer; padding: 4px 6px; border-radius: 5px; font-family: inherit; }
+.ms-ftr-clear:hover { background: var(--red-light); }
+.ms-ftr-count { font-size: 11px; color: var(--text-muted); }
+.ms-search-wrap { padding: 8px; border-bottom: 1px solid var(--border); }
+.ms-search { width: 100%; height: 32px; border: 1px solid var(--border-strong); border-radius: 6px; padding: 0 10px; font-family: inherit; font-size: 12px; outline: none; background: var(--surface-2); }
+.ms-search:focus { border-color: var(--accent); background: var(--surface); }
+.ms-selectall-row {
+  display: flex; align-items: center; gap: 8px; padding: 7px 12px; border-bottom: 1px solid var(--border);
+  background: var(--surface-2); font-size: 12px; font-weight: 700; cursor: pointer; user-select: none;
+}
+.ms-selectall-row:hover { background: var(--surface-hover); }
+.ms-list { max-height: 220px; overflow-y: auto; padding: 4px; }
+.ms-item { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 6px; font-size: 12.5px; cursor: pointer; user-select: none; transition: background .1s; }
+.ms-item:hover { background: var(--surface-2); }
+.ms-item.checked { background: var(--accent-light); }
+.ms-item input[type=checkbox], .ms-selectall-row input[type=checkbox] { width: 15px; height: 15px; cursor: pointer; accent-color: var(--accent); flex-shrink: 0; }
+.ms-item .ms-item-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ms-empty { padding: 16px; text-align: center; font-size: 12px; color: var(--text-muted); }
+
+/* chips */
+.ms-chips-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.ms-chips-row:empty { display: none; }
+.chips-label { font-size: 11.5px; font-weight: 700; color: var(--text-secondary); white-space: nowrap; }
+.ms-chip {
+  display: flex; align-items: center; gap: 5px; background: var(--accent-light); color: var(--accent-dark);
+  border: 1px solid var(--accent-border); border-radius: 20px; padding: 3px 6px 3px 10px; font-size: 11.5px; font-weight: 600;
+}
+.ms-chip button { border: none; background: rgba(37,99,235,.15); color: var(--accent-dark); width: 16px; height: 16px; border-radius: 50%; font-size: 11px; cursor: pointer; line-height: 1; font-family: inherit; }
+.ms-chip button:hover { background: var(--accent); color: var(--on-accent); }
+
+/* date range preset */
+.range-preset-wrap { position: relative; }
+.range-preset-btn {
+  display: flex; align-items: center; gap: 6px; height: 34px; padding: 6px 10px;
+  border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface);
+  font-family: inherit; font-size: 12px; font-weight: 600; color: var(--text-secondary); cursor: pointer; white-space: nowrap;
+}
+.range-preset-btn.has-preset { border-color: var(--accent); color: var(--accent-dark); background: var(--accent-light); }
+.range-preset-menu {
+  position: absolute; top: calc(100% + 4px); right: 0; z-index: 200; width: 190px; background: var(--surface);
+  border: 1px solid var(--border-strong); border-radius: var(--radius-sm); box-shadow: 0 8px 28px rgba(0,0,0,.14);
+  display: none; padding: 4px;
+}
+.range-preset-menu.open { display: block; }
+.range-preset-clear-row { padding: 6px 8px; border-bottom: 1px solid var(--border); }
+.range-preset-clear-row button { font-size: 11.5px; font-weight: 700; color: var(--red); background: none; border: none; cursor: pointer; padding: 4px 6px; border-radius: 5px; font-family: inherit; }
+.range-preset-clear-row button:hover { background: var(--red-light); }
+.range-preset-item { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 7px 10px; font-size: 12px; border-radius: 6px; cursor: pointer; color: var(--text-primary); }
+.range-preset-item:hover { background: var(--surface-2); }
+.range-preset-item.active { background: var(--accent-light); color: var(--accent-dark); font-weight: 700; }
+.range-preset-item .pr-check { display: none; color: var(--accent); }
+.range-preset-item.active .pr-check { display: inline; }
+.range-preset-sep { height: 1px; background: var(--border); margin: 4px 2px; }
+.range-preset-item.has-sub { position: relative; }
+.range-preset-item.has-sub .pr-sub-arrow { font-size: 11px; color: var(--text-muted); transition: color .15s; }
+.range-preset-item.has-sub:hover .pr-sub-arrow,
+.range-preset-item.has-sub.open .pr-sub-arrow { color: var(--accent); }
+.month-submenu {
+  position: absolute; top: -4px; right: calc(100% + 6px); width: 220px; background: var(--surface);
+  border: 1px solid var(--border-strong); border-radius: var(--radius-sm); box-shadow: 0 8px 28px rgba(0,0,0,.14);
+  display: none; padding: 12px; z-index: 210;
+}
+.month-submenu.open { display: block; }
+.month-select-row { display: flex; gap: 8px; }
+.month-select {
+  flex: 1; height: 34px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+  padding: 0 6px; font-family: inherit; font-size: 12.5px; color: var(--text-primary);
+  background: var(--surface); outline: none; cursor: pointer;
+}
+.month-select.filled { border-color: var(--accent); background: var(--accent-light); color: var(--accent-dark); }
+.month-select-hint { font-size: 10.5px; color: var(--text-muted); line-height: 1.5; margin-top: 8px; }
+.range-date-wrap input[type=date] {
+  width: 160px; height: 34px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+  padding: 6px 10px; font-family: var(--font-mono); font-size: 12px; color: var(--text-primary);
+  background: var(--surface); outline: none; cursor: pointer;
+}
+.range-date-wrap input[type=date]:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(37,99,235,.08); }
+
+/* ── Table Section ────────────────────────────────────── */
+.tbl-bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 16px;
+  background: var(--surface-2); cursor: pointer; user-select: none; transition: background .12s; flex-wrap: wrap;
+}
+.tbl-bar:hover { background: var(--surface-hover); }
+.tbl-bar-right, .tbl-bar-left { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.results-wrap { display: flex; align-items: center; gap: 8px; }
+.results-label { font-size: 14px; font-weight: 800; color: var(--text-primary); white-space: nowrap; }
+.results-count {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 44px; height: 34px; padding: 0 10px;
+  font-family: var(--font-mono); font-size: 17px; font-weight: 800;
+  color: var(--purple); background: var(--purple-light);
+  border: 1.5px solid var(--purple-border); border-radius: var(--radius-sm);
+}
+.tbl-toggle { font-size: 13px; color: var(--text-muted); transition: transform .25s; }
+.tbl-toggle.open { transform: rotate(180deg); }
+.act-btn {
+  display: flex; align-items: center; gap: 5px; padding: 7px 13px; border-radius: var(--radius-sm);
+  font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer; transition: all .15s;
+  white-space: nowrap; border: none;
+}
+.act-btn.refresh { background: var(--surface); border: 1px solid var(--border-strong); color: var(--text-primary); }
+.act-btn.refresh:hover { border-color: var(--accent); color: var(--accent); }
+.act-btn.export { background: var(--green-light); border: 1px solid var(--green-border); color: var(--green); }
+.act-btn.export:hover { background: var(--green); color: var(--on-accent); }
+.act-btn:disabled { opacity: .55; cursor: not-allowed; }
+
+.export-warn {
+  margin: 12px 16px 0; padding: 10px 14px; border-radius: 9px;
+  background: var(--amber-light); border: 1px solid var(--amber);
+  color: var(--amber-dark); font-size: 13px; font-weight: 600; line-height: 1.7;
+}
+/* ⚠️ مفيش max-height لما يكون مفتوح — أي رقم ثابت هنا بيقص الصفحة الكاملة
+   (١٠٠ صف بيعدّوا أي سقف معقول) و**صف الصفحات بيختفي تحت القص في صمت**.
+   اتكشف بتشغيل فعلي للصفحة، مش بمراجعة بصرية. الطي بيشتغل بـ max-height:0. */
+.tbl-body-wrap { border-radius: 0 0 var(--radius) var(--radius); }
+.tbl-body-wrap.collapsed { max-height: 0; overflow: hidden; }
+.tbl-scroll { overflow-x: auto; }
+
+.data-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.data-table thead th {
+  text-align: center; background: var(--surface-2); color: var(--text-secondary);
+  font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: .3px;
+  padding: 10px 8px; border-bottom: 2px solid var(--border-strong); white-space: nowrap;
+}
+.sortable-th { cursor: pointer; user-select: none; transition: background .12s, color .12s; }
+.sortable-th:hover  { background: var(--accent-light); color: var(--accent-dark); }
+.sortable-th.sorted { background: var(--accent-light); color: var(--accent-dark); }
+.sort-icon { display: inline-block; font-size: 10px; color: var(--accent); font-weight: 900; }
+.sort-icon.active { margin-inline-start: 4px; }
+.data-table tbody td { text-align: center; padding: 10px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.data-table thead th, .data-table tbody td { border-inline-start: 1px solid var(--border); }
+.data-table thead th:first-child, .data-table tbody td:first-child { border-inline-start: none; }
+.data-table tbody tr:hover { background: var(--surface-2); }
+.col-num { font-family: var(--font-mono); direction: ltr; white-space: nowrap; }
+.cell-wrap { white-space: normal; text-align: right; min-width: 220px; }
+.order-link { font-family: var(--font-mono); font-weight: 600; color: var(--accent); text-decoration: none; }
+.order-link:hover { text-decoration: underline; }
+.order-num  { font-family: var(--font-mono); font-weight: 600; }
+.log-type-badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 20px; white-space: nowrap; }
+.tb-dup     { background: var(--red-light);    color: var(--red);        border: 1px solid var(--red-border); }
+.tb-clear   { background: var(--green-light);  color: var(--green-dark); border: 1px solid var(--green-border); }
+.tb-skip    { background: var(--surface-2);    color: var(--text-muted); border: 1px solid var(--border); }
+.tb-hmac    { background: var(--red-light);    color: var(--red-dark);   border: 1px solid var(--red-border); }
+.tb-capped  { background: var(--amber-light);  color: var(--amber-dark); border: 1px solid var(--amber-border); }
+.tb-other   { background: var(--purple-light); color: var(--purple-dark);border: 1px solid var(--purple-border); }
+.src-badge { font-size: 11px; font-weight: 600; color: var(--text-mid); background: var(--surface-2); border: 1px solid var(--border); border-radius: 20px; padding: 2px 9px; white-space: nowrap; }
+.dup-list { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; }
+.empty-row td { padding: 40px; text-align: center; color: var(--text-muted); font-size: 13px; line-height: 1.9; }
+.loading-spinner {
+  width: 24px; height: 24px; border: 3px solid var(--border); border-top-color: var(--accent);
+  border-radius: 50%; animation: spin .7s linear infinite; display: inline-block;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Pagination ───────────────────────────────────────── */
+.pagination-row { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px; flex-wrap: wrap; border-top: 1px solid var(--border); }
+.page-info { font-size: 13px; color: var(--text-secondary); font-family: var(--font-mono); padding: 0 8px; }
+.page-btn {
+  padding: 6px 14px; border-radius: 7px; border: 1px solid var(--border);
+  background: var(--surface); font-size: 13px; font-weight: 600; cursor: pointer;
+  font-family: var(--font-body); color: var(--text-primary); transition: background .15s, border-color .15s;
+}
+.page-btn:hover:not(:disabled) { background: var(--accent-light); border-color: var(--accent-border); color: var(--accent); }
+.page-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* ── Read-only notice ─────────────────────────────────── */
+.ro-note {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--accent-light); border: 1px solid var(--accent-border);
+  color: var(--accent-dark); border-radius: var(--radius);
+  padding: 9px 14px; margin-bottom: 12px; font-size: 12.5px; font-weight: 600; line-height: 1.7;
+}
+</style>
+
+<div class="container">
+
+<!-- ══════════════════════════════════════════════════════
+     §SHELL — الهيدر + النوافذ + التوست
+     ══════════════════════════════════════════════════════ -->
+<div class="app-header">
+  <div class="app-title">
+    <div class="app-icon">🧾</div>
+    <div class="app-title-text">
+      <h1>Duplicate Order Checker</h1>
+      <span>سجل فحص الأوردرات المكررة — عرض فقط</span>
+    </div>
+  </div>
+  <div class="app-header-btns">
+    <button class="hbtn active-user" id="activeUserBtn" onclick="doLogout()">👤 —</button>
+    <button class="hbtn" id="aboutBtn" onclick="openAbout()">ℹ️ عن الأداة</button>
+    <button class="hbtn ver-btn" id="verBtn" onclick="openChangelog()"></button>
+    <button class="hbtn warn" id="verStaleBtn" style="display:none;" onclick="showWorkerStale()">⚠️ الـ Worker نسخة قديمة</button>
+    <button class="hbtn" id="settingsBtn" onclick="openSettings()">⚙️ الإعدادات</button>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="settings-overlay" id="settingsOverlay" onclick="closeSettingsOnBackdrop(event)">
+  <div class="settings-modal">
+    <div class="settings-modal-hdr">
+      ⚙️ الإعدادات
+      <button class="modal-close-x" onclick="closeSettings()">✕</button>
+    </div>
+    <div class="settings-modal-body">
+      <div class="settings-field">
+        <label class="settings-label">WORKER SECRET</label>
+        <input type="password" class="settings-input" id="cfgSecret" />
+      </div>
+      <div class="settings-field">
+        <label class="settings-label">WORKER URL (ثابت — للعلم فقط)</label>
+        <div class="settings-static" id="cfgUrlStatic"></div>
+      </div>
+      <div class="settings-field" style="border-top:1.5px solid var(--border);padding-top:12px;">
+        <label class="settings-label">فحص النظام</label>
+        <button class="btn btn-outline btn-sm" id="diagBtn" onclick="runDiag()">🩺 افحص الأداة والاتصالات</button>
+        <div id="diagResult" style="margin-top:10px;font-size:12px;line-height:1.7;"></div>
+      </div>
+    </div>
+    <div class="settings-modal-ftr">
+      <button class="btn-modal-cancel" onclick="closeSettings()">إلغاء</button>
+      <button class="btn-modal-save" onclick="saveSettings()">حفظ</button>
+    </div>
+  </div>
+</div>
+
+<!-- Changelog Modal -->
+<div class="eco-overlay" id="changelogOverlay" onclick="if(event.target===this)closeChangelog()">
+  <div class="eco-modal">
+    <div class="eco-modal-hdr">
+      <span>📋 سجل التحديثات</span>
+      <button class="modal-close-x" onclick="closeChangelog()">✕</button>
+    </div>
+    <div class="eco-modal-body">
+      <div class="cl-version-block">
+        <div class="cl-version-row">
+          <span class="cl-ver-badge" id="clLatestVerBadge"></span>
+          <span class="cl-ver-date">12-09-2026</span>
+        </div>
+        <ul class="cl-items">
+          <li class="cl-item"><span class="cl-tag new">جديد</span><span>إطلاق واجهة عرض سجل الأداة — <b>عرض فقط</b>، مفيش أي زرار بيعدّل أوردر أو بيشغّل فحص.</span></li>
+          <li class="cl-item"><span class="cl-tag new">جديد</span><span>شاشة دخول بالـ PIN من جدول الموظفين المشترك.</span></li>
+          <li class="cl-item"><span class="cl-tag new">جديد</span><span>فلاتر اختيار متعدد (نوع العملية · الموظف) + فترة سريعة + من/إلى تاريخ + بحث برقم الأوردر أو الملاحظات — كلها server-side.</span></li>
+          <li class="cl-item"><span class="cl-tag new">جديد</span><span>ترتيب على الأعمدة (server-side) + صفحات ١٠٠ صف + تصدير XLSX بتحذير صريح لو الملف اتقص.</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- About Modal -->
+<div class="eco-overlay" id="aboutOverlay" onclick="if(event.target===this)closeAbout()">
+  <div class="eco-modal">
+    <div class="eco-modal-hdr">
+      <span>ℹ️ About — Duplicate Order Checker</span>
+      <button class="modal-close-x" onclick="closeAbout()">✕</button>
+    </div>
+    <div class="eco-modal-body">
+
+      <details class="about-sec" open>
+        <summary>📋 وصف الأداة</summary>
+        <div class="about-sec-body">
+          <p><strong>الهدف:</strong> عرض سجل عمليات الـ Worker اللي بيفحص الأوردرات الجديدة تلقائيًا وبيكشف التكرار المحتمل بنفس رقم تليفون الشحن. الواجهة دي <strong>قراءة فقط</strong> — بتعرض اللي حصل، ومابتعملش أي فعل.</p>
+          <p><strong>المستخدمون المستهدفون:</strong> خدمة العملاء والإدارة — لمتابعة الأوردرات اللي اتعلّم عليها <code>Duplicate</code> ومراجعة أي فشل في الويبهوك.</p>
+
+          <h4>إزاي الأداة الأصلية بتشتغل (الـ Worker)</h4>
+          <ol>
+            <li>شوبيفاي بيبعت ويبهوك <code>orders/create</code> على <code>POST /webhook</code>.</li>
+            <li>الـ Worker بيتحقق من الـ HMAC ويرد 200 فورًا، والشغل بيكمّل في الخلفية.</li>
+            <li>بيدوّر على أوردرات تانية <strong>غير منفَّذة</strong> وغير ملغية في آخر <strong>90 يوم</strong> بنفس رقم التليفون بعد تنضيفه.</li>
+            <li>لو لقى مطابقات: بيضيف تاج <code>Duplicate</code> وسطر في نوت الأوردر، وبيسجّل <code>duplicate_found</code>.</li>
+            <li>لو مفيش: بيسجّل <code>checked_clear</code>. وأي حالة تانية بتتسجّل بنوعها.</li>
+          </ol>
+
+          <h4>إزاي تستخدم الشاشة دي</h4>
+          <ol>
+            <li>اختار اسمك وادخل الـ PIN.</li>
+            <li>افتح الفلاتر واختار نوع العملية أو الفترة، أو ابحث برقم أوردر.</li>
+            <li>اضغط رأس أي عمود للترتيب (تصاعدي ← تنازلي ← بلا ترتيب).</li>
+            <li>صدّر XLSX لو محتاج تراجع بره الشاشة — لو الملف اتقص هيظهر بانر أصفر بالرقمين.</li>
+          </ol>
+
+          <h4>الـ Endpoints الرئيسية</h4>
+          <table>
+            <tr><th>action</th><th>الوصف</th></tr>
+            <tr><td><code>get_logs</code></td><td>صفحة ١٠٠ صف من السجل — فلترة وترتيب server-side</td></tr>
+            <tr><td><code>get_logs_count</code></td><td>العدد الكلي المطابق للفلاتر (رقم «النتائج»)</td></tr>
+            <tr><td><code>get_logs_export</code></td><td>كل المطابق حتى السقف للتصدير + <code>cap</code> · <code>total</code> · <code>truncated</code></td></tr>
+            <tr><td><code>get_log_types</code></td><td>قيم <code>type</code> الموجودة فعليًا — بتغذّي فلتر نوع العملية</td></tr>
+            <tr><td><code>get_employees</code></td><td>قائمة الموظفين النشطين لشاشة الدخول وفلتر الموظف</td></tr>
+            <tr><td><code>check_employee</code> · <code>register_pin</code> · <code>verify_employee</code></td><td>الدخول بالـ PIN</td></tr>
+            <tr><td><code>get_config</code></td><td>نسخة الـ Worker — لحارس الحد الأدنى</td></tr>
+            <tr><td><code>diag</code></td><td>فحص ذاتي بدون أي كتابة (زرار 🩺 في الإعدادات)</td></tr>
+          </table>
+
+          <h4>⚙️ معنى كل نوع عملية</h4>
+          <table>
+            <tr><th>النوع</th><th>معناه</th></tr>
+            <tr><td><code>duplicate_found</code></td><td>اتحدد كتكرار محتمل — التاج والنوت <strong>اتكتبوا فعلاً</strong> على الأوردر</td></tr>
+            <tr><td><code>checked_clear</code></td><td>اتفحص ومفيش تكرار في آخر ٩٠ يوم — مفيش أي تعديل</td></tr>
+            <tr><td><code>skipped</code></td><td>اتخطّى: مفيش رقم تليفون · payload فاضي · اتعالج قبل كده · خطأ أثناء المعالجة (السبب في الملاحظات)</td></tr>
+            <tr><td><code>scan_capped</code></td><td>الفحص وصل لسقف الصفحات قبل ما يخلّص الـ ٩٠ يوم — النتيجة ممكن تكون ناقصة</td></tr>
+            <tr><td><code>hmac_failed</code></td><td>وصل طلب على مسار الويبهوك والتوقيع مش مظبوط — راجع <code>SHOPIFY_WEBHOOK_SECRET</code></td></tr>
+          </table>
+        </div>
+      </details>
+
+      <details class="about-sec">
+        <summary>🔧 تشريح الكود</summary>
+        <div class="about-sec-body">
+          <h4>FEATURE MAP</h4>
+          <ul>
+            <li><code>§CONFIG</code> — الروابط الثابتة · <code>esc()</code> · <code>orderLink()</code> · دوال توقيت القاهرة · <code>apiRequest/apiGet/apiPost</code> بمهلة</li>
+            <li><code>§SHELL-JS</code> — الإعدادات · النسخة · Changelog · About · التوست · <code>runDiag()</code> · حارس نسخة الـ Worker</li>
+            <li><code>§AUTH-JS</code> — شاشة الدخول بخطوتين (اختيار الموظف ← الـ PIN)</li>
+            <li><code>§LOG-JS</code> — الفلاتر multi-select · فلتر التاريخ · الترتيب · الصفحات · الرسم · تصدير XLSX</li>
+            <li>الـ Worker: <code>§AUTH</code> · <code>§LOG-ENDPOINTS</code> · <code>§WEBHOOK</code> (الأخير مالوش أي واجهة هنا)</li>
+          </ul>
+
+          <h4>KEY VARIABLES</h4>
+          <ul>
+            <li><code>currentEmployee</code> — { username, displayName } في الذاكرة فقط، مش localStorage</li>
+            <li><code>LS_SECRET = 'duplicate_order_check_worker_secret'</code> — المفتاح الوحيد في localStorage</li>
+            <li><code>WORKER_URL</code> — ثابت في الكود (مش سر، مش حقل إعدادات)</li>
+            <li><code>TOOL_VERSION</code> — مصدر واحد لرقم نسخة الصفحة · <code>MIN_WORKER_VERSION</code> — أقل Worker مقبول</li>
+            <li><code>LOG_PAGE_SIZE = 100</code> — نفس سقف الـ Worker للصفحة الواحدة</li>
+          </ul>
+
+          <h4>NOTES / QUIRKS</h4>
+          <ul>
+            <li><strong>الواجهة دي مابتكتبش أي حاجة</strong> — مفيش زرار بيعدّل أوردر، ولا بيعيد تشغيل الفحص، ولا بيمسح صف من السجل.</li>
+            <li><strong>عمود «الموظف» غالبًا «🔔 ويبهوك تلقائي»</strong> — صفوف الأداة دي بيكتبها الـ Worker من الويبهوك، مش موظف. فلتر الموظف موجود للتوافق مع المعيار وهيرجّع صفر نتايج طول ما مفيش صفوف بموظف.</li>
+            <li><strong>الأداة مابتسجّلش <code>login</code>/<code>logout</code></strong> في D1 — القيمتين مش مسجّلتين لها في <code>ecommoda-constants</code> §7، والقاعدة إن القيمة تتسجّل هناك <strong>قبل</strong> أول كتابة.</li>
+            <li><strong>فلتر التاريخ بيقارن بـ UTC</strong> والعرض بتوقيت القاهرة — عملية متأخرة بالليل ممكن تقع في يوم UTC اللي بعده. مقبول لفلتر بالأيام، ومكتوب عشان مايتكتشفش كباج.</li>
+            <li><strong>الترتيب والفلترة والصفحات كلها server-side</strong> — <code>applySort()</code> في الواجهة تمرير مباشر، ورقم «النتائج» جاي من <code>get_logs_count</code> مش من طول الصفحة.</li>
+          </ul>
+        </div>
+      </details>
+
+    </div>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- ══════════════════════════════════════════════════════
+     §TOOL — سجل العمليات (القسم الموحّد: فلاتر + جدول)
+     ══════════════════════════════════════════════════════ -->
+<div class="ro-note">
+  👁️ <span>الأداة دي <b>عرض فقط</b> — بتقرا سجل الفحص التلقائي وبس. مفيش أي زرار هنا بيعدّل أوردر أو تاج أو نوت.</span>
+</div>
+
+<div class="unified-section">
+
+  <!-- ─── §TOOL::filters ─── -->
+  <div class="flt-header" onclick="toggleFilters()">
+    <div class="flt-header-right">
+      <span class="flt-toggle open" id="fltToggleIcon">▲</span>
+      <svg class="flt-icon" id="fltIcon" viewBox="0 0 36 24" fill="none"
+           stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="2 3 13 3 8.3 10.2 8.3 19 6.7 19 6.7 10.2 2 3"></polygon>
+        <line x1="18" y1="5"  x2="33" y2="5"></line>
+        <line x1="18" y1="11" x2="29" y2="11"></line>
+        <line x1="18" y1="17" x2="25" y2="17"></line>
+      </svg>
+    </div>
+    <button class="clear-btn inactive" id="clearAllBtn"
+            onclick="event.stopPropagation(); clearAllFilters();">✕ مسح كل الفلاتر</button>
+  </div>
+
+  <div class="flt-body" id="fltBody">
+
+    <!-- صف 1: فلاتر الاختيار المتعدد -->
+    <div class="flt-row">
+      <div class="flt-g">
+        <span class="flt-label">نوع العملية</span>
+        <div class="ms-wrap" id="msWrap-type">
+          <button class="ms-btn" id="msBtn-type" onclick="msToggle('type')">
+            <span id="msBtnLabel-type">الكل</span><span class="ms-arrow">▾</span>
+          </button>
+          <div class="ms-menu" id="msMenu-type">
+            <div class="ms-ftr-top">
+              <button class="ms-ftr-clear" onclick="msClear('type')">مسح الاختيار</button>
+              <span class="ms-ftr-count" id="msFtrCount-type"></span>
+            </div>
+            <div class="ms-selectall-row" onclick="msToggleSelectAll('type')">
+              <input type="checkbox" id="msSelectAll-type" onclick="event.stopPropagation()" onchange="msToggleSelectAll('type', this.checked)">
+              <span id="msSelectAllLabel-type">تحديد الكل</span>
+            </div>
+            <div class="ms-list" id="msList-type"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- صف 2: بحث ← فترة سريعة ← من ← إلى ← الموظف -->
+    <div class="flt-row">
+      <div class="flt-g" style="min-width:240px;">
+        <span class="flt-label">بحث برقم الأوردر أو الملاحظات</span>
+        <div class="search-wrap">
+          <input type="text" class="search-input" id="searchInput" oninput="onSearchInput(this)" />
+          <span class="search-icon">🔍</span>
+        </div>
+      </div>
+
+      <div class="flt-g">
+        <span class="flt-label">فترة سريعة</span>
+        <div class="range-preset-wrap" id="rangePresetWrap">
+          <button class="range-preset-btn" id="rangePresetBtn" onclick="toggleRangePresetMenu(event)">
+            <span id="rangePresetLabel">⚡ اختار فترة</span><span>▾</span>
+          </button>
+          <div class="range-preset-menu" id="rangePresetMenu">
+            <div class="range-preset-clear-row">
+              <button onclick="clearRangePreset()">✕ مسح الاختيار</button>
+            </div>
+            <div class="range-preset-item" data-preset="today"     onclick="applyRangePreset('today')"><span>اليوم</span><span class="pr-check">✓</span></div>
+            <div class="range-preset-item" data-preset="yesterday" onclick="applyRangePreset('yesterday')"><span>أمس</span><span class="pr-check">✓</span></div>
+            <div class="range-preset-sep"></div>
+            <div class="range-preset-item" data-preset="last3"  onclick="applyRangePreset('last3')"><span>آخر 3 أيام</span><span class="pr-check">✓</span></div>
+            <div class="range-preset-item" data-preset="last7"  onclick="applyRangePreset('last7')"><span>آخر 7 أيام</span><span class="pr-check">✓</span></div>
+            <div class="range-preset-item" data-preset="last30" onclick="applyRangePreset('last30')"><span>آخر 30 يوم</span><span class="pr-check">✓</span></div>
+            <div class="range-preset-item" data-preset="last90" onclick="applyRangePreset('last90')"><span>آخر 90 يوم</span><span class="pr-check">✓</span></div>
+            <div class="range-preset-sep"></div>
+
+            <div class="range-preset-item has-sub" id="monthSpecificItem" onclick="toggleMonthSubmenu(event)">
+              <span>📅 شهر محدد</span><span class="pr-sub-arrow">‹</span>
+              <div class="month-submenu" id="monthSubmenu" onclick="event.stopPropagation();">
+                <div class="month-select-row">
+                  <select class="month-select" id="monthSelectMonth" onchange="onMonthYearChange()">
+                    <option value="">الشهر</option>
+                    <option value="1">يناير</option><option value="2">فبراير</option><option value="3">مارس</option>
+                    <option value="4">أبريل</option><option value="5">مايو</option><option value="6">يونيو</option>
+                    <option value="7">يوليو</option><option value="8">أغسطس</option><option value="9">سبتمبر</option>
+                    <option value="10">أكتوبر</option><option value="11">نوفمبر</option><option value="12">ديسمبر</option>
+                  </select>
+                  <select class="month-select" id="monthSelectYear" onchange="onYearSelectChange()"></select>
+                </div>
+                <input type="number" class="month-select" id="monthSelectYearManual" style="display:none;margin-top:8px;"
+                       placeholder="مثال: 2019" oninput="onMonthYearManualInput()">
+                <div class="month-select-hint">اختَر الشهر والسنة — الفلتر بيتطبّق تلقائيًا بمجرد اختيار الاتنين. لسنة أقدم اختَر "سنة تانية..." واكتبها يدويًا.</div>
+              </div>
+            </div>
+
+            <div class="range-preset-item" data-preset="thisMonth"   onclick="applyRangePreset('thisMonth')"><span>الشهر الحالي</span><span class="pr-check">✓</span></div>
+            <div class="range-preset-item" data-preset="lastMonth"   onclick="applyRangePreset('lastMonth')"><span>الشهر السابق</span><span class="pr-check">✓</span></div>
+            <div class="range-preset-item" data-preset="thisQuarter" onclick="applyRangePreset('thisQuarter')"><span>الربع الحالي</span><span class="pr-check">✓</span></div>
+            <div class="range-preset-sep"></div>
+            <div class="range-preset-item" data-preset="thisYear" onclick="applyRangePreset('thisYear')"><span>العام الحالي</span><span class="pr-check">✓</span></div>
+            <div class="range-preset-item" data-preset="lastYear" onclick="applyRangePreset('lastYear')"><span>العام السابق</span><span class="pr-check">✓</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flt-g">
+        <span class="flt-label">من تاريخ</span>
+        <div class="range-date-wrap"><input type="date" id="rangeDateFrom" onclick="this.showPicker&&this.showPicker();" onchange="onDateChanged()"></div>
+      </div>
+      <div class="flt-g">
+        <span class="flt-label">إلى تاريخ</span>
+        <div class="range-date-wrap"><input type="date" id="rangeDateTo" onclick="this.showPicker&&this.showPicker();" onchange="onDateChanged()"></div>
+      </div>
+
+      <div class="flt-g">
+        <span class="flt-label">الموظف</span>
+        <div class="ms-wrap" id="msWrap-emp">
+          <button class="ms-btn" id="msBtn-emp" onclick="msToggle('emp')">
+            <span id="msBtnLabel-emp">الكل</span><span class="ms-arrow">▾</span>
+          </button>
+          <div class="ms-menu" id="msMenu-emp">
+            <div class="ms-ftr-top">
+              <button class="ms-ftr-clear" onclick="msClear('emp')">مسح الاختيار</button>
+              <span class="ms-ftr-count" id="msFtrCount-emp"></span>
+            </div>
+            <div class="ms-search-wrap">
+              <input type="text" class="ms-search" id="msSearch-emp" oninput="msFilterList('emp', this.value)" placeholder="بحث...">
+            </div>
+            <div class="ms-selectall-row" onclick="msToggleSelectAll('emp')">
+              <input type="checkbox" id="msSelectAll-emp" onclick="event.stopPropagation()" onchange="msToggleSelectAll('emp', this.checked)">
+              <span id="msSelectAllLabel-emp">تحديد الكل</span>
+            </div>
+            <div class="ms-list" id="msList-emp"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chips — سطر منفصل لكل فلتر -->
+    <div class="ms-chips-row" id="chipsRow-type"></div>
+    <div class="ms-chips-row" id="chipsRow-emp"></div>
+
+  </div>
+
+  <div class="section-divider"></div>
+
+  <!-- ─── §TOOL::table ─── -->
+  <div class="tbl-bar" onclick="toggleTable()">
+    <div class="tbl-bar-right">
+      <span class="tbl-toggle open" id="tblToggleIcon">▲</span>
+      <div class="results-wrap">
+        <span class="results-label">النتائج:</span>
+        <span class="results-count" id="filteredCount">—</span>
+      </div>
+    </div>
+    <div class="tbl-bar-left">
+      <button class="act-btn refresh" id="refreshBtn" onclick="event.stopPropagation(); refreshLog();">↺ تحديث</button>
+      <button class="act-btn export"  id="exportBtn"  onclick="event.stopPropagation(); exportLogXLSX();">⬇ تصدير XLSX</button>
+    </div>
+  </div>
+
+  <div id="logExportWarn" class="export-warn" style="display:none;"></div>
+
+  <div class="tbl-body-wrap" id="tblBodyWrap">
+    <div class="tbl-scroll">
+      <table class="data-table">
+        <thead><tr>
+          <th class="sortable-th" data-sort-key="date"      onclick="toggleSort('date')">التاريخ<span class="sort-icon" data-sort-key="date"></span></th>
+          <th class="sortable-th" data-sort-key="time"      onclick="toggleSort('time')">الوقت<span class="sort-icon" data-sort-key="time"></span></th>
+          <th class="sortable-th" data-sort-key="type"      onclick="toggleSort('type')">نوع العملية<span class="sort-icon" data-sort-key="type"></span></th>
+          <th class="sortable-th" data-sort-key="orderName" onclick="toggleSort('orderName')">رقم الأوردر<span class="sort-icon" data-sort-key="orderName"></span></th>
+          <th>الأوردرات المكررة</th>
+          <th>صفحات مفحوصة</th>
+          <th class="sortable-th" data-sort-key="employee"  onclick="toggleSort('employee')">الموظف<span class="sort-icon" data-sort-key="employee"></span></th>
+          <th class="sortable-th" data-sort-key="notes"     onclick="toggleSort('notes')">الملاحظات<span class="sort-icon" data-sort-key="notes"></span></th>
+        </tr></thead>
+        <tbody id="logTbody">
+          <tr class="empty-row"><td colspan="8">سجّل دخولك عشان يتحمّل السجل.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="pagination-row" id="paginationRow" style="display:none;">
+      <button class="page-btn" id="btnPrevPage" onclick="goPage(-1)">→ السابق</button>
+      <span class="page-info" id="pageInfo"></span>
+      <button class="page-btn" id="btnNextPage" onclick="goPage(1)">التالي ←</button>
+    </div>
+  </div>
+
+</div>
+
+</div><!-- نهاية div.container -->
+
+<!-- ══════════════════════════════════════════════════════
+     §LOGIN — شاشة الدخول
+     ══════════════════════════════════════════════════════ -->
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-card">
+
+    <button class="login-settings-btn missing" id="loginSettingsBtn" onclick="openSettings()">
+      ⚙️ الإعدادات
+    </button>
+    <div class="login-version" id="loginVersionText"></div>
+
+    <div class="login-top">
+      <div class="login-icon">🧾</div>
+      <div class="login-title">Duplicate Order Checker</div>
+      <div class="login-desc">سجل فحص الأوردرات المكررة — عرض فقط</div>
+      <div class="login-sub" id="loginSub"></div>
+    </div>
+
+    <div class="login-body">
+
+      <div class="login-field">
+        <select id="loginSelect" onchange="handleEmployeeChange()" disabled>
+          <option value="">اختر اسمك للمتابعة</option>
+        </select>
+        <div class="login-status warn" id="loginStatus">الإعدادات غير مكتملة — افتح الإعدادات أولاً.</div>
+      </div>
+
+      <div class="login-alert" id="loginAlert"></div>
+
+      <div class="pin-zone" id="pinZone">
+        <div class="pin-label" id="pinLabel">أدخل الـ PIN</div>
+
+        <div class="pin-slots" id="pinSlots">
+          <div class="pin-slot empty" id="pinSlot0"></div>
+          <div class="pin-slot empty" id="pinSlot1"></div>
+          <div class="pin-slot empty" id="pinSlot2"></div>
+          <div class="pin-slot empty" id="pinSlot3"></div>
+        </div>
+
+        <div class="pin-keypad" id="pinKeypad">
+          <button class="pin-key" onclick="pressPinKey('1')">1</button>
+          <button class="pin-key" onclick="pressPinKey('2')">2</button>
+          <button class="pin-key" onclick="pressPinKey('3')">3</button>
+          <button class="pin-key" onclick="pressPinKey('4')">4</button>
+          <button class="pin-key" onclick="pressPinKey('5')">5</button>
+          <button class="pin-key" onclick="pressPinKey('6')">6</button>
+          <button class="pin-key" onclick="pressPinKey('7')">7</button>
+          <button class="pin-key" onclick="pressPinKey('8')">8</button>
+          <button class="pin-key" onclick="pressPinKey('9')">9</button>
+          <button class="pin-key utility" onclick="pressPinKey('clear')">مسح</button>
+          <button class="pin-key" onclick="pressPinKey('0')">0</button>
+          <button class="pin-key utility" onclick="pressPinKey('back')">←</button>
+        </div>
+
+        <button class="login-primary visible" id="loginPrimaryBtn"
+                onclick="handlePrimaryLoginAction()" disabled>دخول</button>
+        <button class="login-secondary" id="loginSecondaryBtn"
+                onclick="restartNewPinFlow()">الرجوع لإدخال PIN جديد</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════
+// §CONFIG
+// ══════════════════════════════════════════════════════
+const TOOL_VERSION       = 'v1.0.0';   // مصدر واحد لرقم نسخة الصفحة
+const MIN_WORKER_VERSION = '2.3.0';    // أقل نسخة Worker الصفحة دي بتشتغل معاها
+                                       // (النسخة اللي ضافت get_log_types و cap/total/truncated)
+
+// الرابط مش سر — ثابت في الكود، مش حقل إعدادات ولا localStorage (Standards #28)
+const WORKER_URL  = 'https://duplicate-order-checker-worker.ecommoda-dev.workers.dev';
+const SHOP_DOMAIN = '6c7e1a-53.myshopify.com';
+
+// المفتاح الوحيد في localStorage — الأداة مش عضو في أي مجموعة سر (constants §6 قاعدة ٦)
+const LS_SECRET = 'duplicate_order_check_worker_secret';
+
+const API_TIMEOUT_MS = 90000;   // طويلة عن قصد: القطع بدري أسوأ من الانتظار
+const LOG_PAGE_SIZE  = 100;     // نفس سقف الصفحة في الـ Worker
+
+function getConfig() {
+  let secret = '';
+  try { secret = localStorage.getItem(LS_SECRET) || ''; } catch { secret = ''; }
+  return { workerUrl: WORKER_URL, workerSecret: secret };
+}
+function isConfigured() {
+  const c = getConfig();
+  return c.workerUrl.startsWith('http') && c.workerSecret.length > 0;
+}
+
+// ─── §CONFIG::esc — إلزامي قبل أي قيمة خارجية تدخل innerHTML ───
+function esc(v) {
+  return String(v ?? '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+// ─── §CONFIG::orderLink — رقم الأوردر هايبر لينك بالافتراضي ───
+function shopifyOrderUrl(orderId) {
+  const id = String(orderId).includes('gid://') ? String(orderId).split('/').pop() : String(orderId);
+  return `https://${SHOP_DOMAIN}/admin/orders/${id.replace(/\D/g, '')}`;
+}
+function orderLink(orderNumber, orderId) {
+  const raw   = String(orderNumber ?? '').trim();
+  if (!raw) return '—';
+  const label = esc(raw.startsWith('#') ? raw : `#${raw}`);
+  const id    = String(orderId ?? '').replace(/\D/g, '');
+  if (!id) return `<span class="order-num">${label}</span>`;   // ممنوع تخمين رابط
+  return `<a href="${shopifyOrderUrl(id)}" target="_blank" rel="noopener" class="order-link">${label}</a>`;
+}
+
+// ─── §CONFIG::time — توقيت القاهرة يتحسب، مايتكتبش ثابت (constants §13) ───
+const CAIRO_TZ = 'Africa/Cairo';
+const _cairoFmt = new Intl.DateTimeFormat('en-CA', { timeZone: CAIRO_TZ, hourCycle: 'h23',
+  year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit' });
+function cairoParts(d) {
+  const o = {};
+  for (const p of _cairoFmt.formatToParts(d)) if (p.type !== 'literal') o[p.type] = p.value;
+  if (o.hour === '24') o.hour = '00';
+  return o;
+}
+function cairoDateStr(d = new Date()) { const p = cairoParts(d); return `${p.year}-${p.month}-${p.day}`; }
+// ⚠️ صف واحد بـ timestamp تالف كان بيرمي "Invalid time value" جوّه .map()
+//    فـ**الجدول كله** يبان فاضي برسالة غامضة ومفيش إشارة لأنهي صف. نفس عيلة
+//    الحارس بتاع extra التالف. اتكشف بتشغيل فعلي، مش بمراجعة.
+function cairoPartsSafe(iso) {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return null;
+  return cairoParts(d);
+}
+function cairoToday() { return cairoDateStr(new Date()); }
+function cairoYear()  { return Number(cairoParts(new Date()).year); }
+function cairoMonth() { return Number(cairoParts(new Date()).month); }
+function addDays(ymd, n) {
+  const [y, m, d] = ymd.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d + n));
+  const p = n => String(n).padStart(2, '0');
+  return `${dt.getUTCFullYear()}-${p(dt.getUTCMonth() + 1)}-${p(dt.getUTCDate())}`;
+}
+function formatDate(iso) {
+  const p = cairoPartsSafe(iso);
+  if (!p) return '—';
+  return `📅 ${p.day}/${p.month}/${p.year}`;
+}
+function formatTimeOnly(iso) {
+  const p = cairoPartsSafe(iso);
+  if (!p) return '—';
+  let h = Number(p.hour);
+  const ampm = h >= 12 ? 'مساءً' : 'صباحاً';
+  h = h % 12 || 12;
+  return `🕐 ${String(h).padStart(2, '0')}:${p.minute} ${ampm}`;
+}
+function formatDateTime(iso) {
+  if (!cairoPartsSafe(iso)) return '—';
+  return `${formatDate(iso)} ${formatTimeOnly(iso)}`;
+}
+// عمود التاريخ في XLSX فقط — بدون إيموجي
+function formatDateForExport(iso) {
+  const p = cairoPartsSafe(iso);
+  if (!p) return null;
+  return `${p.day}-${p.month}-${p.year}`;
+}
+function formatTimeForExport(iso) {
+  const p = cairoPartsSafe(iso);
+  if (!p) return null;
+  let h = Number(p.hour);
+  const ampm = h >= 12 ? 'مساءً' : 'صباحاً';
+  h = h % 12 || 12;
+  return `${String(h).padStart(2, '0')}:${p.minute} ${ampm}`;
+}
+
+// ─── §CONFIG::api ───
+// apiRequest بتفرّق بين: الـ Worker رد بخطأ ≠ مقدرناش نوصله ≠ رد بحاجة مش JSON
+async function apiRequest(url, opts) {
+  const ctrl  = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), API_TIMEOUT_MS);
+  let resp, text;
+  try {
+    resp = await fetch(url, { ...opts, signal: ctrl.signal });
+    text = await resp.text();
+  } catch (e) {
+    if (e.name === 'AbortError')
+      throw new Error(`الـ Worker ما ردّش خلال ${API_TIMEOUT_MS / 1000} ثانية — جرّب تاني أو راجع حالة الـ Worker`);
+    throw new Error(`تعذّر الوصول للـ Worker (شبكة أو CORS) — ${e.message}`);
+  } finally {
+    clearTimeout(timer);
+  }
+  let data;
+  try { data = JSON.parse(text); }
+  catch { throw new Error(`رد غير متوقع من الـ Worker (HTTP ${resp.status}): ${text.slice(0, 160)}`); }
+  if (!resp.ok) throw new Error(data.error || `HTTP ${resp.status}`);
+  return data;
+}
+async function apiGet(action, params = {}) {
+  if (!isConfigured()) { openSettings(); throw new Error('الإعدادات غير مكتملة'); }
+  const { workerUrl, workerSecret } = getConfig();
+  const qs = new URLSearchParams({ action, ...params });
+  return apiRequest(`${workerUrl.replace(/\/$/, '')}?${qs}`, {
+    headers: { 'Authorization': `Bearer ${workerSecret}` },
+  });
+}
+async function apiPost(action, body = {}) {
+  if (!isConfigured()) { openSettings(); throw new Error('الإعدادات غير مكتملة'); }
+  const { workerUrl, workerSecret } = getConfig();
+  return apiRequest(`${workerUrl.replace(/\/$/, '')}?action=${action}`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${workerSecret}` },
+    body:    JSON.stringify(body),
+  });
+}
+
+// ══════════════════════════════════════════════════════
+// §SHELL-JS
+// ══════════════════════════════════════════════════════
+function showToast(msg, type = 'neutral', duration = 3000) {
+  const t = document.createElement('div');
+  t.className = `toast toast-${type}`;
+  t.textContent = msg;
+  document.getElementById('toastContainer').appendChild(t);
+  setTimeout(() => t.remove(), duration);
+}
+
+let _audioCtx = null;
+function playBeep(type) {
+  try {
+    if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = _audioCtx.createOscillator(), gain = _audioCtx.createGain();
+    osc.connect(gain); gain.connect(_audioCtx.destination);
+    if (type === 'success') {
+      osc.frequency.setValueAtTime(880,  _audioCtx.currentTime);
+      osc.frequency.setValueAtTime(1100, _audioCtx.currentTime + 0.1);
+      gain.gain.setValueAtTime(0.3, _audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, _audioCtx.currentTime + 0.25);
+      osc.start(_audioCtx.currentTime); osc.stop(_audioCtx.currentTime + 0.25);
+    } else {
+      osc.frequency.setValueAtTime(300, _audioCtx.currentTime);
+      osc.frequency.setValueAtTime(200, _audioCtx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.4, _audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, _audioCtx.currentTime + 0.35);
+      osc.start(_audioCtx.currentTime); osc.stop(_audioCtx.currentTime + 0.35);
+    }
+  } catch { /* الصوت مش شرط لعمل الأداة */ }
+}
+
+// ── Settings ──────────────────────────────────────────
+function openSettings() {
+  const c = getConfig();
+  document.getElementById('cfgSecret').value = c.workerSecret || '';
+  document.getElementById('cfgUrlStatic').textContent = WORKER_URL;
+  document.getElementById('diagResult').innerHTML = '';
+  document.getElementById('settingsOverlay').classList.add('open');
+}
+function closeSettings()            { document.getElementById('settingsOverlay').classList.remove('open'); }
+function closeSettingsOnBackdrop(e) { if (e.target === e.currentTarget) closeSettings(); }
+
+function saveSettings() {
+  const secret = document.getElementById('cfgSecret').value.trim();
+  if (!secret) { showToast('الرجاء إدخال الـ WORKER SECRET', 'error'); return; }
+  try { localStorage.setItem(LS_SECRET, secret); }
+  catch { showToast('المتصفح رافض يحفظ الإعدادات (وضع خاص؟) — هتحتاج تدخّل السر كل مرة', 'warning', 6000); }
+  updateSettingsBtn();
+  updateLoginSettingsBtn();
+  closeSettings();
+  showToast('تم حفظ الإعدادات ✓', 'success');
+  loadEmployeesList();
+  checkWorkerVersion();
+}
+function updateSettingsBtn() {
+  document.getElementById('settingsBtn').classList.toggle('settings-configured', isConfigured());
+}
+
+// ── Version — مصدر واحد ───────────────────────────────
+function renderVersionUI() {
+  const verBtn = document.getElementById('verBtn');
+  if (verBtn) verBtn.textContent = `${TOOL_VERSION} 📋`;
+  const clBadge = document.getElementById('clLatestVerBadge');
+  if (clBadge) clBadge.textContent = TOOL_VERSION;
+  const loginVer = document.getElementById('loginVersionText');
+  if (loginVer) loginVer.textContent = TOOL_VERSION;
+}
+
+function openChangelog()  { document.getElementById('changelogOverlay').classList.add('open'); }
+function closeChangelog() { document.getElementById('changelogOverlay').classList.remove('open'); }
+function openAbout()      { document.getElementById('aboutOverlay').classList.add('open'); }
+function closeAbout()     { document.getElementById('aboutOverlay').classList.remove('open'); }
+
+// ── حارس نسخة الـ Worker — حد أدنى مش تطابق (Standards #29) ──
+let workerVersion = null;
+function cmpVersion(a, b) {
+  const pa = String(a).replace(/^v/, '').split('.').map(Number);
+  const pb = String(b).replace(/^v/, '').split('.').map(Number);
+  for (let i = 0; i < 3; i++) {
+    const d = (pa[i] || 0) - (pb[i] || 0);
+    if (d) return d;
+  }
+  return 0;
+}
+async function checkWorkerVersion() {
+  // 🔴 إلزامي — من غير السطر ده مودال الإعدادات بيفتح لوحده فوق شاشة الدخول
+  if (!isConfigured()) return;
+  try {
+    const d = await apiGet('get_config');
+    workerVersion = d.version || null;
+    const stale = workerVersion && cmpVersion(workerVersion, MIN_WORKER_VERSION) < 0;
+    const btn = document.getElementById('verStaleBtn');
+    if (btn) btn.style.display = stale ? '' : 'none';
+  } catch { /* الإعدادات ممكن تكون لسه مش مضبوطة */ }
+}
+function showWorkerStale() {
+  showToast(
+    `الـ Worker نسخته ${workerVersion} والواجهة محتاجة ${MIN_WORKER_VERSION} على الأقل — ` +
+    `التحديث على ما يبدو ما نزلش. راجع Deployments و Promote في كلاودفلير.`,
+    'error', 7000
+  );
+}
+
+// ── الفحص الذاتي — بيعرض الأسماء والأطوال، مفيش قيمة سر ──
+function diagRow(icon, label, detail) {
+  return `<div class="diag-row"><span class="dg-ico">${icon}</span>`
+       + `<span class="dg-lbl">${esc(label)}:</span>`
+       + `<span class="dg-det">${esc(detail ?? '')}</span></div>`;
+}
+function diagRows(checks) {
+  if (!checks) return '';
+  if (Array.isArray(checks)) return checks.map(c => diagRow(c.ok ? '✅' : '❌', c.label || c.name, c.detail)).join('');
+  if (typeof checks !== 'object') return diagRow('ℹ️', 'checks', String(checks));
+  return Object.entries(checks).map(([k, v]) => {
+    const txt = (v && typeof v === 'object') ? JSON.stringify(v) : String(v);
+    let icon = 'ℹ️';
+    if (/(Error|Warning)$/.test(k))      icon = '⚠️';
+    else if (/^FAILED/i.test(txt))       icon = '❌';
+    else if (txt === 'ok' || v === true) icon = '✅';
+    else if (v === false)                icon = '❌';
+    return diagRow(icon, k, txt);
+  }).join('');
+}
+async function runDiag() {
+  const box = document.getElementById('diagResult');
+  const btn = document.getElementById('diagBtn');
+  box.innerHTML = '<div class="loading-spinner"></div>';
+  btn.disabled = true;
+  try {
+    const d = await apiGet('diag');
+    box.innerHTML = diagRow('ℹ️', 'نسخة الـ Worker', d.version || '—') + diagRows(d.checks);
+  } catch (e) {
+    box.innerHTML = diagRow('❌', 'فشل الفحص', e.message);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ══════════════════════════════════════════════════════
+// §AUTH-JS — شاشة الدخول
+// ══════════════════════════════════════════════════════
+let currentEmployee = null;        // { username, displayName } — في الذاكرة فقط
+let loginMode       = 'employee';  // employee | existing | new | confirm
+let pinDigits       = [];
+let pendingNewPin   = '';
+let isLoginBusy     = false;
+let autoLoginTimer  = null;
+
+let EMP_NAMES = {};   // { username: 'الاسم المعروض' }
+function employeeDisplayName(username) {
+  if (!username) return '';
+  return EMP_NAMES[username] || String(username).replace(/_/g, ' ');
+}
+
+async function loadEmployeesList() {
+  const sel    = document.getElementById('loginSelect');
+  const status = document.getElementById('loginStatus');
+  clearLoginAlert();
+  sel.innerHTML = '<option value="">اختر اسمك للمتابعة</option>';
+  sel.disabled  = true;
+
+  if (!isConfigured()) {
+    status.className   = 'login-status warn';
+    status.textContent = 'الإعدادات غير مكتملة — افتح الإعدادات أولاً.';
+    renderLoginMode('employee');
+    return;
+  }
+
+  status.className   = 'login-status info';
+  status.textContent = 'جارٍ تحميل قائمة الموظفين...';
+
+  try {
+    const data      = await apiGet('get_employees');
+    const employees = data.employees || [];
+    EMP_NAMES = {};
+    employees.forEach(e => {
+      EMP_NAMES[e.username] = e.display_name;
+      const o = document.createElement('option');
+      o.value = e.username; o.textContent = e.display_name;
+      sel.appendChild(o);
+    });
+    sel.disabled       = false;
+    status.className   = employees.length ? 'login-status info' : 'login-status warn';
+    status.textContent = employees.length ? '' : 'لا يوجد موظفون نشطون.';
+  } catch (err) {
+    status.className   = 'login-status error';
+    status.textContent = 'تعذّر تحميل قائمة الموظفين.';
+    showLoginAlert(err.message || 'تعذّر تحميل قائمة الموظفين.');
+  }
+}
+
+async function handleEmployeeChange() {
+  if (isLoginBusy) return;
+  clearTimeout(autoLoginTimer);
+  clearLoginAlert();
+  resetPinState();
+
+  const sel      = document.getElementById('loginSelect');
+  const username = sel.value || '';
+  if (!username) { renderLoginMode('employee'); return; }
+
+  renderLoginMode('employee');
+  document.getElementById('loginSub').textContent = 'جارٍ التحقق من الحساب...';
+
+  try {
+    const data = await apiGet('check_employee', { username });
+    if (!data.exists) {
+      showLoginAlert('المستخدم غير موجود');
+      sel.value = ''; renderLoginMode('employee'); playBeep('error'); return;
+    }
+    if (!data.isActive) {
+      showLoginAlert('الحساب موقوف — تواصل مع المسؤول');
+      sel.value = ''; renderLoginMode('employee'); playBeep('error'); return;
+    }
+    renderLoginMode(data.hasPin ? 'existing' : 'new');
+  } catch (err) {
+    showLoginAlert(err.message || 'تعذّر التحقق من الحساب');
+    sel.value = ''; renderLoginMode('employee'); playBeep('error');
+  }
+}
+
+function renderLoginMode(mode) {
+  loginMode = mode;
+  const pinZone   = document.getElementById('pinZone');
+  const pinLabel  = document.getElementById('pinLabel');
+  const primary   = document.getElementById('loginPrimaryBtn');
+  const secondary = document.getElementById('loginSecondaryBtn');
+
+  pinZone.classList.toggle('visible', mode !== 'employee');
+  primary.classList.toggle('visible', mode !== 'employee');
+  secondary.classList.toggle('visible', mode === 'confirm');
+  resetPinState(false);
+  clearLoginAlert();
+
+  const sub = document.getElementById('loginSub');
+  if (mode === 'employee') {
+    sub.textContent      = '';
+    pinLabel.textContent = 'أدخل الـ PIN';
+    primary.textContent  = 'دخول';
+    primary.disabled     = true;
+    return;
+  }
+  if (mode === 'existing') {
+    sub.textContent      = 'أدخل الـ PIN';
+    pinLabel.textContent = 'أدخل الـ PIN';
+    primary.textContent  = 'دخول';
+    primary.disabled     = true;
+    return;
+  }
+  if (mode === 'new') {
+    sub.textContent      = 'أول مرة؟ أنشئ PIN من 4 أرقام';
+    pinLabel.textContent = 'أنشئ PIN جديد';
+    primary.textContent  = 'متابعة';
+    primary.disabled     = true;
+    return;
+  }
+  if (mode === 'confirm') {
+    sub.textContent      = 'أعد إدخال الـ PIN للتأكيد';
+    pinLabel.textContent = 'تأكيد الـ PIN';
+    primary.textContent  = 'تأكيد وتسجيل الدخول';
+    primary.disabled     = true;
+  }
+}
+
+function restartNewPinFlow() { pendingNewPin = ''; renderLoginMode('new'); }
+
+function pressPinKey(key) {
+  if (isLoginBusy || loginMode === 'employee') return;
+  clearTimeout(autoLoginTimer);
+  if      (key === 'clear')                           pinDigits = [];
+  else if (key === 'back')                            pinDigits.pop();
+  else if (/^\d$/.test(key) && pinDigits.length < 4)  pinDigits.push(key);
+  clearLoginAlert();
+  renderPinSlots();
+  updatePrimaryLoginState();
+  if (pinDigits.length === 4) {
+    autoLoginTimer = setTimeout(() => handlePrimaryLoginAction(), 140);
+  }
+}
+function renderPinSlots() {
+  for (let i = 0; i < 4; i++) {
+    const slot = document.getElementById(`pinSlot${i}`);
+    slot.classList.remove('empty', 'filled', 'error');
+    slot.classList.add(i < pinDigits.length ? 'filled' : 'empty');
+  }
+}
+function resetPinState(clearPending = true) {
+  pinDigits = [];
+  if (clearPending && loginMode !== 'confirm') pendingNewPin = '';
+  renderPinSlots();
+  updatePrimaryLoginState();
+}
+function updatePrimaryLoginState() {
+  document.getElementById('loginPrimaryBtn').disabled =
+    loginMode === 'employee' || pinDigits.length !== 4 || isLoginBusy;
+}
+async function handlePrimaryLoginAction() {
+  if (isLoginBusy || loginMode === 'employee' || pinDigits.length !== 4) return;
+  if (loginMode === 'existing') { await verifyExistingPin(); return; }
+  if (loginMode === 'new')      { pendingNewPin = pinDigits.join(''); renderLoginMode('confirm'); return; }
+  if (loginMode === 'confirm')  { await registerNewPinAndLogin(); }
+}
+async function verifyExistingPin() {
+  const username = document.getElementById('loginSelect').value;
+  const pin      = pinDigits.join('');
+  setLoginBusy(true, '⏳ جاري التحقق...');
+  try {
+    const data = await apiPost('verify_employee', { username, pin });
+    if (!data.ok) { await presentLoginPinError('PIN خطأ — حاول مرة أخرى'); return; }
+    await finishLogin(username, data.displayName);
+  } catch (err) {
+    await presentLoginPinError(err.message || 'PIN خطأ');
+  } finally {
+    setLoginBusy(false);
+  }
+}
+async function registerNewPinAndLogin() {
+  const username   = document.getElementById('loginSelect').value;
+  const confirmPin = pinDigits.join('');
+  if (confirmPin !== pendingNewPin) {
+    await presentLoginPinError('الـ PIN غير متطابق — حاول مرة أخرى');
+    pendingNewPin = ''; renderLoginMode('new'); return;
+  }
+  setLoginBusy(true, '⏳ جاري التسجيل...');
+  try {
+    const reg = await apiPost('register_pin', { username, pin: pendingNewPin });
+    if (reg && reg.ok === false) { await presentLoginPinError(reg.error || 'تعذّر تسجيل الـ PIN'); return; }
+    const data = await apiPost('verify_employee', { username, pin: pendingNewPin });
+    if (!data.ok) { await presentLoginPinError(data.error || 'تعذّر تسجيل الدخول'); return; }
+    await finishLogin(username, data.displayName);
+  } catch (err) {
+    await presentLoginPinError(err.message || 'تعذّر تسجيل الـ PIN');
+  } finally {
+    setLoginBusy(false);
+  }
+}
+function setLoginBusy(active, text = '') {
+  isLoginBusy = active;
+  const primary = document.getElementById('loginPrimaryBtn');
+  document.querySelectorAll('#pinKeypad .pin-key').forEach(b => b.disabled = active);
+  document.getElementById('loginSelect').disabled = active || !isConfigured();
+  if (active) {
+    primary.dataset.prevText = primary.textContent;
+    primary.textContent      = text || primary.textContent;
+    primary.disabled         = true;
+  } else {
+    primary.textContent = primary.dataset.prevText || primary.textContent;
+    delete primary.dataset.prevText;
+    updatePrimaryLoginState();
+  }
+}
+async function presentLoginPinError(message) {
+  playBeep('error');
+  showLoginAlert(message);
+  const slots = document.getElementById('pinSlots');
+  slots.classList.add('shake');
+  for (let i = 0; i < 4; i++) document.getElementById(`pinSlot${i}`).classList.add('error');
+  await new Promise(r => setTimeout(r, 760));
+  slots.classList.remove('shake');
+  pinDigits = []; renderPinSlots(); updatePrimaryLoginState();
+}
+function showLoginAlert(msg) {
+  const a = document.getElementById('loginAlert');
+  a.textContent = msg; a.classList.add('visible');
+}
+function clearLoginAlert() {
+  const a = document.getElementById('loginAlert');
+  a.textContent = ''; a.classList.remove('visible');
+}
+
+document.addEventListener('keydown', e => {
+  const loginVisible = !document.getElementById('loginOverlay').classList.contains('hidden');
+  // ⚠️ العنصر اسمه settingsOverlay — الاسم القديم (بدون Overlay) مش موجود في
+  //    الـ DOM، وقراءته بترمي استثناء وتكسر الـ keydown handler كله
+  const settingsOpen = document.getElementById('settingsOverlay').classList.contains('open');
+  if (!loginVisible || settingsOpen || isLoginBusy) return;
+  if (/^\d$/.test(e.key))                       { e.preventDefault(); pressPinKey(e.key);   return; }
+  if (e.key === 'Backspace')                    { e.preventDefault(); pressPinKey('back');  return; }
+  if (e.key === 'Delete' || e.key === 'Escape') { e.preventDefault(); pressPinKey('clear'); return; }
+  if (e.key === 'Enter')                        { e.preventDefault(); handlePrimaryLoginAction(); }
+});
+
+async function finishLogin(username, displayName) {
+  currentEmployee = { username, displayName };
+  document.getElementById('loginOverlay').classList.add('hidden');
+  document.getElementById('activeUserBtn').textContent = `👤 ${displayName}`;
+  showToast(`أهلاً ${displayName} 👋`, 'success');
+  playBeep('success');
+
+  // ── post-login: تحميل خيارات الفلاتر ثم السجل ──
+  await loadFilterOptions();
+  logCurrentPage = 1;
+  fetchLog();
+}
+
+async function doLogout() {
+  if (!confirm('تسجيل الخروج؟')) return;
+  currentEmployee = null;
+  loginMode       = 'employee';
+  pinDigits       = [];
+  pendingNewPin   = '';
+  isLoginBusy     = false;
+  clearTimeout(autoLoginTimer);
+
+  const sel = document.getElementById('loginSelect');
+  sel.value = '';
+  document.getElementById('pinSlots').classList.remove('shake');
+  renderPinSlots();
+  renderLoginMode('employee');
+  clearLoginAlert();
+
+  // reset الأداة
+  document.getElementById('activeUserBtn').textContent = '👤 —';
+  document.getElementById('logTbody').innerHTML =
+    '<tr class="empty-row"><td colspan="8">سجّل دخولك عشان يتحمّل السجل.</td></tr>';
+  document.getElementById('filteredCount').textContent = '—';
+  document.getElementById('paginationRow').style.display = 'none';
+  clearExportWarn();
+
+  document.getElementById('loginOverlay').classList.remove('hidden');
+}
+
+function updateLoginSettingsBtn() {
+  const btn = document.getElementById('loginSettingsBtn');
+  if (!btn) return;
+  btn.classList.toggle('ready',   isConfigured());
+  btn.classList.toggle('missing', !isConfigured());
+}
+
+// ══════════════════════════════════════════════════════
+// §LOG-JS — الفلاتر + الجدول + الصفحات + التصدير
+// ══════════════════════════════════════════════════════
+
+// ① extra التالف مايوقّعش الجدول كله — صف واحد بيوقّع الباقي من غير ما حد يعرف مين
+function safeExtra(raw) {
+  if (raw == null) return {};
+  if (typeof raw === 'object') return raw;
+  try { return JSON.parse(raw) || {}; }
+  catch { return { _corrupt: true, _raw: String(raw).slice(0, 200) }; }
+}
+
+const TYPE_META = {
+  duplicate_found: { label: '🚨 تكرار محتمل',   cls: 'tb-dup' },
+  checked_clear:   { label: '✅ مفيش تكرار',    cls: 'tb-clear' },
+  skipped:         { label: '⏭️ اتخطّى',        cls: 'tb-skip' },
+  scan_capped:     { label: '⚠️ الفحص وصل للسقف', cls: 'tb-capped' },
+  hmac_failed:     { label: '🔒 فشل تحقق HMAC', cls: 'tb-hmac' },
+};
+function typeLabel(t) { return (TYPE_META[t] && TYPE_META[t].label) || t || '—'; }
+function typeClass(t) { return (TYPE_META[t] && TYPE_META[t].cls)   || 'tb-other'; }
+
+// ─── §LOG-JS::state ───
+const msState = {
+  type: { items: [], selected: new Set(), search: '', mode: 'list' },
+  emp:  { items: [], selected: new Set(), search: '', mode: 'list' },
+};
+const filterLabels = { type: 'نوع العملية', emp: 'الموظف' };
+
+let searchTerm        = '';
+let dateFrom          = null;
+let dateTo            = null;
+let dateFilterActive  = false;   // الحالة المحايدة = بلا فلتر تاريخ خالص
+let activeRangePreset = '';
+let sortState         = { key: null, dir: null };
+let logCurrentPage    = 1;
+let logTotalCount     = 0;
+let logPageRows       = [];
+let logSearchTimer    = null;
+let logLoading        = false;
+
+// ─── §LOG-JS::collapse ───
+let fltOpen = true;
+function toggleFilters() {
+  fltOpen = !fltOpen;
+  document.getElementById('fltBody').classList.toggle('collapsed', !fltOpen);
+  document.getElementById('fltToggleIcon').classList.toggle('open', fltOpen);
+}
+let tblOpen = true;
+function toggleTable() {
+  tblOpen = !tblOpen;
+  document.getElementById('tblBodyWrap').classList.toggle('collapsed', !tblOpen);
+  document.getElementById('tblToggleIcon').classList.toggle('open', tblOpen);
+}
+
+// ─── §LOG-JS::filterState ───
+// ⚠️ !!value مش !== null — الفلاتر المالهاش نطاق قيمتها undefined،
+//    و undefined !== null بترجع true فالزرار بيفضل نشط للأبد.
+function anyFilterActive() {
+  const msActive = Object.keys(msState).some(k =>
+    msState[k].selected.size > 0 || !!msState[k].rangeFrom || !!msState[k].rangeTo);
+  return msActive || searchTerm.trim().length > 0 || dateFilterActive;
+}
+function updateFilterIconState() {
+  const active = anyFilterActive();
+  document.getElementById('fltIcon').classList.toggle('active', active);
+  document.getElementById('clearAllBtn').classList.toggle('inactive', !active);
+}
+
+// ─── §LOG-JS::multiSelect ───
+function msRenderList(key) {
+  const st = msState[key];
+  const listEl = document.getElementById(`msList-${key}`);
+  const q = st.search.trim().toLowerCase();
+  const visible = q ? st.items.filter(it => it.label.toLowerCase().includes(q)) : st.items;
+  // ⚠️ القيمة نفسها مابتدخلش الـ attribute — بيتبعت **رقم العنصر** في st.items.
+  //    قيمة فيها ' أو " كانت هتكسر الـ onclick بصمت مهما اتهرّبت (الـ HTML
+  //    بيفك التهريب قبل ما الـ JS يتقري).
+  listEl.innerHTML = !visible.length
+    ? '<div class="ms-empty">لا توجد عناصر</div>'
+    : visible.map(it => {
+        const checked = st.selected.has(it.value);
+        const idx = st.items.indexOf(it);
+        return `<div class="ms-item ${checked ? 'checked' : ''}" onclick="msToggleItemAt('${key}',${idx})">
+          <input type="checkbox" ${checked ? 'checked' : ''} onclick="event.stopPropagation(); msToggleItemAt('${key}',${idx})">
+          <span class="ms-item-label">${esc(it.label)}</span>
+        </div>`;
+      }).join('');
+  const allVisibleChecked = visible.length > 0 && visible.every(it => st.selected.has(it.value));
+  const saEl = document.getElementById(`msSelectAll-${key}`);
+  if (saEl) saEl.checked = allVisibleChecked;
+  const saLbl = document.getElementById(`msSelectAllLabel-${key}`);
+  if (saLbl) saLbl.textContent = q ? `تحديد كل نتائج البحث (${visible.length})` : 'تحديد الكل';
+  msUpdateButtonLabel(key);
+  const cnt = document.getElementById(`msFtrCount-${key}`);
+  if (cnt) cnt.textContent = `${st.selected.size} مختار`;
+}
+function msUpdateButtonLabel(key) {
+  const st  = msState[key];
+  const btn = document.getElementById(`msBtn-${key}`);
+  const lbl = document.getElementById(`msBtnLabel-${key}`);
+  const n   = st.selected.size;
+  btn.classList.toggle('has-selection', n > 0);
+  if (n === 0)      lbl.textContent = 'الكل';
+  else if (n === 1) {
+    const only = [...st.selected][0];
+    const item = st.items.find(it => it.value === only);
+    lbl.textContent = item ? item.label : only;
+  } else {
+    lbl.innerHTML = `${n} محدد <span class="ms-count">${n}</span>`;
+  }
+}
+function msToggle(key) {
+  const menu = document.getElementById(`msMenu-${key}`), btn = document.getElementById(`msBtn-${key}`);
+  const willOpen = !menu.classList.contains('open');
+  Object.keys(msState).forEach(k => {
+    document.getElementById(`msMenu-${k}`).classList.remove('open');
+    document.getElementById(`msBtn-${k}`).classList.remove('open');
+  });
+  if (willOpen) { menu.classList.add('open'); btn.classList.add('open'); }
+}
+function msToggleItem(key, value) {
+  const st = msState[key];
+  if (value == null) return;
+  st.selected.has(value) ? st.selected.delete(value) : st.selected.add(value);
+  msRenderList(key); renderChips(); onLogFilterChange();
+}
+function msToggleItemAt(key, idx) {
+  const it = msState[key].items[idx];
+  if (!it) return;
+  msToggleItem(key, it.value);
+}
+function msToggleSelectAll(key, forceState) {
+  const st = msState[key];
+  const q = st.search.trim().toLowerCase();
+  const visible = q ? st.items.filter(it => it.label.toLowerCase().includes(q)) : st.items;
+  const allChecked = visible.length > 0 && visible.every(it => st.selected.has(it.value));
+  const shouldCheck = forceState !== undefined ? forceState : !allChecked;
+  visible.forEach(it => shouldCheck ? st.selected.add(it.value) : st.selected.delete(it.value));
+  msRenderList(key); renderChips(); onLogFilterChange();
+}
+function msFilterList(key, value) { msState[key].search = value; msRenderList(key); }
+function msClear(key) {
+  msState[key].selected.clear();
+  msRenderList(key); renderChips(); onLogFilterChange();
+}
+
+// إغلاق أي قائمة مفتوحة لو الضغط كان برّه الـ wrap بتاعها.
+// ⚠️ الحارس الأول إلزامي: اختيار عنصر بيعمل re-render للقائمة، فالعنصر المضغوط
+// بيتشال من الـ DOM قبل ما الحدث يوصل هنا، و wrap.contains(detached) بترجّع
+// false — فالقائمة كانت هتتقفل بعد أول اختيار (multi-select بالاسم بس).
+document.addEventListener('click', (e) => {
+  if (!document.contains(e.target)) return;   // ← لا تشيله
+  Object.keys(msState).forEach(k => {
+    const wrap = document.getElementById(`msWrap-${k}`);
+    if (wrap && !wrap.contains(e.target)) {
+      document.getElementById(`msMenu-${k}`).classList.remove('open');
+      document.getElementById(`msBtn-${k}`).classList.remove('open');
+    }
+  });
+});
+
+function renderChips() {
+  Object.keys(msState).forEach(key => {
+    const row = document.getElementById(`chipsRow-${key}`);
+    if (!row) return;
+    const label = filterLabels[key] || key;
+    const chips = [...msState[key].selected].map(val => {
+      const idx  = msState[key].items.findIndex(it => it.value === val);
+      const item = idx >= 0 ? msState[key].items[idx] : null;
+      const v    = esc(item ? item.label : val);
+      // نفس قاعدة القائمة: رقم العنصر في الـ attribute، مش القيمة
+      return `<span class="ms-chip">${v}<button onclick="msToggleItemAt('${key}',${idx})">✕</button></span>`;
+    }).join('');
+    row.innerHTML = chips ? `<span class="chips-label">${esc(label)}:</span>${chips}` : '';
+  });
+}
+
+// ─── §LOG-JS::search ───
+function toggleSearchActiveState(el) { el.classList.toggle('has-value', el.value.trim().length > 0); }
+function onSearchInput(el) {
+  toggleSearchActiveState(el);
+  clearTimeout(logSearchTimer);
+  logSearchTimer = setTimeout(() => { searchTerm = el.value; onLogFilterChange(); }, 400);
+}
+
+// ─── §LOG-JS::dateRange ───
+const RANGE_PRESET_LABELS = {
+  today:'اليوم', yesterday:'أمس', last3:'آخر 3 أيام', last7:'آخر 7 أيام',
+  last30:'آخر 30 يوم', last90:'آخر 90 يوم', thisMonth:'الشهر الحالي',
+  lastMonth:'الشهر السابق', thisQuarter:'الربع الحالي',
+  thisYear:'العام الحالي', lastYear:'العام السابق',
+};
+const RANGE_MONTH_NAMES = ['','يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+
+function toggleRangePresetMenu(e) {
+  e.stopPropagation();
+  document.getElementById('rangePresetMenu').classList.toggle('open');
+}
+document.addEventListener('click', (e) => {
+  const wrap = document.getElementById('rangePresetWrap');
+  if (wrap && !wrap.contains(e.target)) {
+    document.getElementById('rangePresetMenu').classList.remove('open');
+    closeMonthSubmenu();
+  }
+});
+
+function monthLastDay(year, month) {
+  return new Date(Date.UTC(year, month, 0)).getUTCDate();
+}
+function computePresetRange(preset) {
+  const today = cairoToday();
+  const y = cairoYear(), m = cairoMonth();
+  const pad = n => String(n).padStart(2, '0');
+  switch (preset) {
+    case 'today':     return { from: today, to: today };
+    case 'yesterday': { const d = addDays(today, -1); return { from: d, to: d }; }
+    case 'last3':     return { from: addDays(today, -2),  to: today };
+    case 'last7':     return { from: addDays(today, -6),  to: today };
+    case 'last30':    return { from: addDays(today, -29), to: today };
+    case 'last90':    return { from: addDays(today, -89), to: today };
+    case 'thisMonth': return { from: `${y}-${pad(m)}-01`, to: today };
+    case 'lastMonth': {
+      const py = m === 1 ? y - 1 : y, pm = m === 1 ? 12 : m - 1;
+      return { from: `${py}-${pad(pm)}-01`, to: `${py}-${pad(pm)}-${pad(monthLastDay(py, pm))}` };
+    }
+    case 'thisQuarter': {
+      const qStart = Math.floor((m - 1) / 3) * 3 + 1;
+      return { from: `${y}-${pad(qStart)}-01`, to: today };
+    }
+    case 'thisYear': return { from: `${y}-01-01`, to: today };
+    case 'lastYear': return { from: `${y - 1}-01-01`, to: `${y - 1}-12-31` };
+    default: return null;
+  }
+}
+function applyRangePreset(preset) {
+  document.getElementById('rangePresetMenu').classList.remove('open');
+  closeMonthSubmenu();
+  resetMonthSpecific();
+  const r = computePresetRange(preset);
+  if (!r) return;
+  activeRangePreset = preset;
+  dateFrom = r.from; dateTo = r.to; dateFilterActive = true;
+  document.getElementById('rangeDateFrom').value = r.from;
+  document.getElementById('rangeDateTo').value   = r.to;
+  document.querySelectorAll('.range-preset-item').forEach(el => el.classList.toggle('active', el.dataset.preset === preset));
+  document.getElementById('rangePresetLabel').textContent = `⚡ ${RANGE_PRESET_LABELS[preset]}`;
+  document.getElementById('rangePresetBtn').classList.add('has-preset');
+  onLogFilterChange();
+}
+function onDateChanged() {
+  activeRangePreset = '';
+  resetMonthSpecific();
+  dateFrom = document.getElementById('rangeDateFrom').value || null;
+  dateTo   = document.getElementById('rangeDateTo').value   || null;
+  dateFilterActive = !!(dateFrom || dateTo);
+  document.getElementById('rangePresetLabel').textContent = '⚡ اختار فترة';
+  document.getElementById('rangePresetBtn').classList.toggle('has-preset', dateFilterActive);
+  document.querySelectorAll('.range-preset-item').forEach(el => el.classList.remove('active'));
+  onLogFilterChange();
+}
+// الحالة المحايدة الوحيدة: بلا فلتر تاريخ خالص — مش "اليوم"
+function resetDateFilter() {
+  activeRangePreset = '';
+  dateFrom = null; dateTo = null; dateFilterActive = false;
+  document.getElementById('rangeDateFrom').value = '';
+  document.getElementById('rangeDateTo').value   = '';
+  document.getElementById('rangePresetLabel').textContent = '⚡ اختار فترة';
+  document.getElementById('rangePresetBtn').classList.remove('has-preset');
+  document.querySelectorAll('.range-preset-item').forEach(el => el.classList.remove('active'));
+  resetMonthSpecific();
+}
+function clearRangePreset() {
+  resetDateFilter();
+  document.getElementById('rangePresetMenu').classList.remove('open');
+  onLogFilterChange();
+}
+
+// "شهر محدد" — شهر + سنة
+function ensureRangeYearOptions() {
+  const sel = document.getElementById('monthSelectYear');
+  if (!sel || sel.options.length) return;   // idempotent
+  const y = cairoYear();
+  sel.innerHTML = '<option value="">السنة</option>'
+    + [y, y - 1, y - 2].map(v => `<option value="${v}">${v}</option>`).join('')
+    + '<option value="__other">سنة تانية...</option>';
+}
+function resetMonthSpecific() {
+  const mSel = document.getElementById('monthSelectMonth');
+  const ySel = document.getElementById('monthSelectYear');
+  const yMan = document.getElementById('monthSelectYearManual');
+  if (mSel) { mSel.value = ''; mSel.classList.remove('filled'); }
+  if (ySel) { ySel.value = ''; ySel.classList.remove('filled'); }
+  if (yMan) { yMan.value = ''; yMan.style.display = 'none'; }
+}
+function toggleMonthSubmenu(e) {
+  e.stopPropagation();
+  ensureRangeYearOptions();
+  const sub = document.getElementById('monthSubmenu'), item = document.getElementById('monthSpecificItem');
+  const isOpen = sub.classList.contains('open');
+  sub.classList.toggle('open', !isOpen);
+  item.classList.toggle('open', !isOpen);
+}
+function closeMonthSubmenu() {
+  const sub = document.getElementById('monthSubmenu'), item = document.getElementById('monthSpecificItem');
+  if (sub)  sub.classList.remove('open');
+  if (item) item.classList.remove('open');
+}
+function onYearSelectChange() {
+  const sel = document.getElementById('monthSelectYear'), manual = document.getElementById('monthSelectYearManual');
+  if (sel.value === '__other') {
+    manual.style.display = 'block'; manual.value = ''; sel.classList.remove('filled'); manual.focus();
+  } else {
+    manual.style.display = 'none'; manual.value = '';
+    onMonthYearChange();
+  }
+}
+function onMonthYearManualInput() { onMonthYearChange(); }
+function onMonthYearChange() {
+  const monthSel = document.getElementById('monthSelectMonth');
+  const yearSel  = document.getElementById('monthSelectYear');
+  const manual   = document.getElementById('monthSelectYearManual');
+  const month = monthSel.value;
+  const year  = yearSel.value === '__other' ? manual.value.trim() : yearSel.value;
+  monthSel.classList.toggle('filled', !!month);
+  yearSel.classList.toggle('filled', !!yearSel.value && yearSel.value !== '__other');
+  if (!month || !year || String(year).length !== 4 || isNaN(Number(year))) return;
+  applySpecificMonth(Number(year), Number(month));
+}
+function applySpecificMonth(year, month) {
+  const pad = n => String(n).padStart(2, '0');
+  const from = `${year}-${pad(month)}-01`;
+  const to   = `${year}-${pad(month)}-${pad(monthLastDay(year, month))}`;
+  activeRangePreset = 'specificMonth';
+  dateFrom = from; dateTo = to; dateFilterActive = true;
+  document.getElementById('rangeDateFrom').value = from;
+  document.getElementById('rangeDateTo').value   = to;
+  document.querySelectorAll('.range-preset-item').forEach(el => el.classList.toggle('active', el.id === 'monthSpecificItem'));
+  document.getElementById('rangePresetLabel').textContent = `📅 ${RANGE_MONTH_NAMES[month]} ${year}`;
+  document.getElementById('rangePresetBtn').classList.add('has-preset');
+  closeMonthSubmenu();
+  document.getElementById('rangePresetMenu').classList.remove('open');
+  onLogFilterChange();
+}
+
+// ─── §LOG-JS::clearAll ───
+function clearAllFilters() {
+  if (!anyFilterActive()) return;
+  Object.keys(msState).forEach(k => {
+    msState[k].selected.clear();
+    msState[k].search = '';
+    const s = document.getElementById(`msSearch-${k}`);
+    if (s) s.value = '';
+    msRenderList(k);
+  });
+  const si = document.getElementById('searchInput');
+  si.value = ''; searchTerm = '';
+  toggleSearchActiveState(si);
+  renderChips();
+  resetDateFilter();
+  onLogFilterChange();
+}
+
+// ─── §LOG-JS::sort — server-side، والدالة دي تمرير مباشر ───
+function toggleSort(key) {
+  if (sortState.key !== key)          { sortState.key = key; sortState.dir = 'asc'; }
+  else if (sortState.dir === 'asc')   { sortState.dir = 'desc'; }
+  else                                { sortState.key = null; sortState.dir = null; }
+  updateSortHeaderUI();
+  logCurrentPage = 1;   // أي تغيير في الترتيب بيرجّع لصفحة ١
+  fetchLog();
+}
+function updateSortHeaderUI() {
+  document.querySelectorAll('.sort-icon').forEach(el => {
+    const isActive = sortState.key === el.dataset.sortKey;
+    el.textContent = isActive ? (sortState.dir === 'asc' ? '▲' : '▼') : '';
+    el.classList.toggle('active', isActive);
+  });
+  document.querySelectorAll('.sortable-th').forEach(th => {
+    th.classList.toggle('sorted', th.dataset.sortKey === sortState.key);
+  });
+}
+// الفلترة والصفحات server-side، فالترتيب server-side كمان (data-table-standard § 8)
+function applySort(rows) { return rows; }
+
+// ─── §LOG-JS::fetch ───
+// مصدر واحد لباراميترات الفلاتر — التلات نداءات بتستخدمه، فمفيش تعريف مكرر يتعتّق
+function logParams() {
+  const p = {};
+  const employees = [...msState.emp.selected];
+  const types     = [...msState.type.selected];
+  if (employees.length) p.employees = employees.join(',');
+  if (types.length)     p.types     = types.join(',');
+  if (searchTerm.trim()) p.search   = searchTerm.trim();
+  if (dateFilterActive && dateFrom) p.dateFrom = dateFrom;
+  if (dateFilterActive && dateTo)   p.dateTo   = dateTo;
+  return p;
+}
+function onLogFilterChange() {
+  logCurrentPage = 1;
+  clearExportWarn();
+  fetchLog();
+}
+function refreshLog() { clearExportWarn(); fetchLog(); }
+
+async function fetchLog() {
+  updateFilterIconState();
+  if (!currentEmployee) return;          // مفيش تحميل قبل الدخول
+  if (logLoading) return;
+  logLoading = true;
+
+  const tbody = document.getElementById('logTbody');
+  tbody.innerHTML = '<tr class="empty-row"><td colspan="8"><div class="loading-spinner"></div><div style="margin-top:8px;">جاري التحميل...</div></td></tr>';
+  document.getElementById('refreshBtn').disabled = true;
+
+  const offset = (logCurrentPage - 1) * LOG_PAGE_SIZE;
+  const base   = logParams();
+  const pageParams = { ...base, limit: String(LOG_PAGE_SIZE), offset: String(offset) };
+  if (sortState.key) { pageParams.sortBy = sortState.key; pageParams.sortDir = sortState.dir; }
+
+  try {
+    const [pageData, countData] = await Promise.all([
+      apiGet('get_logs',       pageParams),
+      apiGet('get_logs_count', base),
+    ]);
+    logTotalCount = countData.total || 0;
+    logPageRows   = pageData.entries || [];
+    document.getElementById('filteredCount').textContent = logTotalCount.toLocaleString('en-US');
+    renderLogTable(applySort(logPageRows));
+    renderPagination();
+  } catch (e) {
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="8">⚠️ ${esc(e.message)}</td></tr>`;
+    document.getElementById('filteredCount').textContent = '—';
+    document.getElementById('paginationRow').style.display = 'none';
+    showToast(e.message, 'error', 7000);
+  } finally {
+    logLoading = false;
+    document.getElementById('refreshBtn').disabled = false;
+  }
+}
+
+function renderPagination() {
+  const row = document.getElementById('paginationRow');
+  const totalPages = Math.max(1, Math.ceil(logTotalCount / LOG_PAGE_SIZE));
+  if (logTotalCount === 0) { row.style.display = 'none'; return; }
+  row.style.display = 'flex';
+  document.getElementById('pageInfo').textContent =
+    `صفحة ${logCurrentPage.toLocaleString('en-US')} من ${totalPages.toLocaleString('en-US')}`
+    + ` · ${logTotalCount.toLocaleString('en-US')} صف`;
+  document.getElementById('btnPrevPage').disabled = logCurrentPage <= 1;
+  document.getElementById('btnNextPage').disabled = logCurrentPage >= totalPages;
+}
+function goPage(dir) {
+  const totalPages = Math.max(1, Math.ceil(logTotalCount / LOG_PAGE_SIZE));
+  const next = logCurrentPage + dir;
+  if (next < 1 || next > totalPages) return;
+  logCurrentPage = next;
+  fetchLog();
+}
+
+// ─── §LOG-JS::render ───
+function renderLogTable(entries) {
+  const tbody = document.getElementById('logTbody');
+  if (!entries.length) {
+    const empHint = msState.emp.selected.size
+      ? '<div style="margin-top:6px;font-size:12px;">ℹ️ صفوف الأداة دي بيكتبها الويبهوك التلقائي بدون موظف — فلتر الموظف هيرجّع صفر نتايج دايمًا.</div>'
+      : '';
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="8">لا توجد نتائج تطابق الفلاتر المحددة${empHint}</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = entries.map(e => {
+    const extra   = safeExtra(e.extra);
+    const matches = Array.isArray(extra.matches) ? extra.matches : [];
+    const dupHtml = matches.length
+      ? `<div class="dup-list">${matches.map(m => orderLink(m.name, m.id)).join('')}</div>`
+      : '—';
+    const pages   = (extra.pagesScanned ?? null);
+    const empHtml = e.employee
+      ? esc(employeeDisplayName(e.employee))
+      : '<span class="src-badge">🔔 ويبهوك تلقائي</span>';
+    return `<tr>
+      <td class="col-num">${formatDate(e.timestamp)}</td>
+      <td class="col-num">${formatTimeOnly(e.timestamp)}</td>
+      <td><span class="log-type-badge ${typeClass(e.type)}">${esc(typeLabel(e.type))}</span></td>
+      <td>${orderLink(e.order_name, e.order_id)}</td>
+      <td>${dupHtml}</td>
+      <td class="col-num">${pages == null ? '—' : Number(pages).toLocaleString('en-US')}</td>
+      <td>${empHtml}</td>
+      <td class="cell-wrap">${esc(e.notes || '—')}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ─── §LOG-JS::export ───
+function clearExportWarn() {
+  const w = document.getElementById('logExportWarn');
+  if (w) { w.style.display = 'none'; w.innerHTML = ''; }
+}
+async function exportLogXLSX() {
+  if (!currentEmployee) { showToast('سجّل دخولك الأول', 'warning'); return; }
+  if (typeof ExcelJS === 'undefined') {
+    showToast('مكتبة التصدير ما اتحمّلتش — راجع الاتصال بالإنترنت وأعد تحميل الصفحة', 'error', 7000);
+    return;
+  }
+  clearExportWarn();
+  const btn = document.getElementById('exportBtn');
+  btn.disabled = true;
+  try {
+    const data    = await apiGet('get_logs_export', logParams());
+    const entries = data.entries || [];
+    if (!entries.length) { showToast('مفيش صفوف مطابقة للفلاتر', 'warning'); return; }
+
+    const rows = entries.map(e => {
+      const extra   = safeExtra(e.extra);
+      const matches = Array.isArray(extra.matches) ? extra.matches : [];
+      return {
+        'التاريخ':            formatDateForExport(e.timestamp),
+        'الوقت':              formatTimeForExport(e.timestamp),
+        'نوع العملية':        typeLabel(e.type),
+        'رقم الأوردر':        e.order_name || null,
+        'الأوردرات المكررة':  matches.length ? matches.map(m => m.name).join(' , ') : null,
+        'عدد المكررة':        matches.length || null,
+        'صفحات مفحوصة':       extra.pagesScanned ?? null,
+        'الموظف':             e.employee ? employeeDisplayName(e.employee) : 'ويبهوك تلقائي',
+        'الملاحظات':          e.notes || null,
+      };
+    });
+
+    const wb = new ExcelJS.Workbook();
+    wb.views = [{ rightToLeft: true }];
+    const ws = wb.addWorksheet('سجل فحص التكرار');
+    ws.views = [{ state: 'frozen', ySplit: 1, rightToLeft: true }];
+    ws.columns = [
+      { header: 'التاريخ',           key: 'التاريخ',           width: 14 },
+      { header: 'الوقت',             key: 'الوقت',             width: 14 },
+      { header: 'نوع العملية',       key: 'نوع العملية',       width: 20 },
+      { header: 'رقم الأوردر',       key: 'رقم الأوردر',       width: 14 },
+      { header: 'الأوردرات المكررة', key: 'الأوردرات المكررة', width: 34 },
+      { header: 'عدد المكررة',       key: 'عدد المكررة',       width: 12 },
+      { header: 'صفحات مفحوصة',      key: 'صفحات مفحوصة',      width: 14 },
+      { header: 'الموظف',            key: 'الموظف',            width: 18 },
+      { header: 'الملاحظات',         key: 'الملاحظات',         width: 52 },
+    ];
+    const headers = Object.keys(rows[0]);
+    rows.forEach(row => { const c = {}; for (const k of headers) c[k] = row[k] ?? null; ws.addRow(c); });
+    ws.eachRow((r, idx) => { if (idx === 1) return; r.eachCell(c => { if (typeof c.value === 'number') c.numFmt = '#,##0'; }); });
+
+    const buf  = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url  = URL.createObjectURL(blob), a = document.createElement('a');
+    // cairoDateStr() مش toISOString() — الأخيرة UTC وتصدير ١ صباحًا كان بياخد تاريخ إمبارح
+    a.href = url; a.download = `duplicate-order-check-log-${cairoDateStr()}.xlsx`;
+    a.click(); URL.revokeObjectURL(url);
+
+    // ⬇️ الحقيقة بتيجي من الـ Worker — ممنوع الواجهة تكتب السقف عندها
+    const truncated = data.truncated === true || (data.cap && entries.length >= data.cap);
+    const warn = document.getElementById('logExportWarn');
+    if (truncated) {
+      warn.innerHTML = `⚠️ <b>التصدير اتقص</b> — الملف فيه ${entries.length.toLocaleString('en-US')} صف`
+        + (data.total != null ? ` من أصل <b>${Number(data.total).toLocaleString('en-US')}</b> مطابقين للفلاتر` : '')
+        + `. ضيّق الفترة أو الفلاتر وصدّر على دفعات.`;
+      warn.style.display = '';
+      showToast(`⚠️ التصدير اتقص عند ${entries.length.toLocaleString('en-US')} صف — الملف مش كامل`, 'error', 7000);
+    } else {
+      showToast(`تم تصدير ${entries.length.toLocaleString('en-US')} عملية ✓`, 'success');
+    }
+  } catch (e) {
+    showToast('خطأ في التصدير: ' + e.message, 'error', 7000);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ─── §LOG-JS::filterOptions ───
+// القوايم بتتقرا من السيرفر — الواجهة مابتخمّنش قيم type، ومابتكاشهاش للأبد
+async function loadFilterOptions() {
+  try {
+    const [typesData, empData] = await Promise.all([
+      apiGet('get_log_types'),
+      apiGet('get_employees'),
+    ]);
+    const types = (typesData.types || []).map(t => ({
+      value: t.type,
+      label: `${typeLabel(t.type)} (${Number(t.n || 0).toLocaleString('en-US')})`,
+    }));
+    msState.type.items = types;
+    const emps = empData.employees || [];
+    EMP_NAMES = {};
+    emps.forEach(e => { EMP_NAMES[e.username] = e.display_name; });
+    msState.emp.items = emps.map(e => ({ value: e.username, label: e.display_name }));
+  } catch (e) {
+    showToast(`تعذّر تحميل قوائم الفلاتر — ${e.message}`, 'warning', 6000);
+  }
+  msRenderList('type');
+  msRenderList('emp');
+  renderChips();
+  updateFilterIconState();
+}
+
+// ══════════════════════════════════════════════════════
+// Init
+// ══════════════════════════════════════════════════════
+renderVersionUI();
+updateSettingsBtn();
+updateLoginSettingsBtn();
+resetDateFilter();          // بلا فلتر تاريخ من أول تحميل (الحالة المحايدة)
+updateSortHeaderUI();
+updateFilterIconState();
+msRenderList('type');
+msRenderList('emp');
+checkWorkerVersion();
+loadEmployeesList();
+</script>
+
+</body>
+</html>
