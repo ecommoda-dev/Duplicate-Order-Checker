@@ -58,7 +58,7 @@ Vars     : SHOP_DOMAIN · DUPLICATE_TAG · DUPLICATE_NOTE_PREFIX
 Build watch paths : * (الافتراضي)
 ```
 
-> 🔴 **`DUPLICATE_NOTE_PREFIX` لسه مش مكتوب في `wrangler.toml`** — لازم يتنسخ من الداشبورد بالحرف **قبل** ربط الريبو بـ Workers Builds، وإلا أول build بيمسحه والنوت بيرجع للـ fallback الإنجليزي على أوردرات حقيقية بدون أي رسالة. الخطوات مكتوبة في `wrangler.toml` نفسه.
+> ✅ **التلات Vars مكتوبين في `wrangler.toml`** — اتحلّت في `164545a`. القاعدة اللي وراها لسه سارية: `[vars]` في `wrangler.toml` بيحلّ محل الداشبورد بالكامل، وأي var مش مكتوب هناك **بيتمسح مع أول build** — والنوت كان هيرجع للـ fallback الإنجليزي على أوردرات حقيقية من غير أي رسالة خطأ. أي var جديد يتكتب في `wrangler.toml` في نفس التسليم، مش في الداشبورد بس.
 
 ## CORS
 
@@ -104,10 +104,9 @@ git show <sha>:index.js
 
 ## مسائل مفتوحة
 
-0. **شيل الـ fallback على `SHOPIFY_WEBHOOK_SECRET`** — بعد ما كل الصفوف الجديدة تبقى `extra.signedWith = "client_secret"` وويبهوك الـ Admin-UI يتمسح من شوبيفاي: يتشال الـ candidate التاني من `§HELPERS::verifyWebhookSignature`، ويتشال السر من الداشبورد ومن `wrangler.toml`، ويترفع الـ Worker لـ `v2.5.0`.
-1. **`scan_capped` مش مسجّلة في `ecommoda-constants` §7** — الجدول هناك بيقول ٤ قيم للأداة دي (`checked_clear` · `duplicate_found` · `hmac_failed` · `skipped`)، والكود المنشور بيكتب `scan_capped` كمان من قبل النقل. **مخالفة موروثة لـ Rule 7، مش ناتجة عن التعديل ده** — تتسجّل في §7 عند أول تحديث للثوابت.
-2. **تسجيل `login`/`logout`** — الواجهة الجديدة فيها شاشة دخول، والأداة مابتسجّلش الدخول في D1 (القيمتين مش مسجّلتين في §7). لو اتقرر تسجيله: تتسجّل القيمتين في §7 **الأول**، وبعدين يترجّع `writeLog` في `§AUTH` ويترفع `WORKER_VERSION`.
-3. **`DUPLICATE_NOTE_PREFIX` في `wrangler.toml`** — لازم يتكتب قبل ربط الريبو (فوق).
+1. **شيل الـ fallback على `SHOPIFY_WEBHOOK_SECRET`** — بعد ما كل الصفوف الجديدة تبقى `extra.signedWith = "client_secret"` وويبهوك الـ Admin-UI يتمسح من شوبيفاي: يتشال الـ candidate التاني من `§HELPERS::verifyWebhookSignature`، ويتشال السر من الداشبورد ومن `wrangler.toml`، ويترفع الـ Worker لـ `v2.5.0`.
+2. **`scan_capped` مش مسجّلة في `ecommoda-constants` §7** — الجدول هناك بيقول ٤ قيم للأداة دي (`checked_clear` · `duplicate_found` · `hmac_failed` · `skipped`)، والكود المنشور بيكتب `scan_capped` كمان من قبل النقل. **مخالفة موروثة لـ Rule 7، مش ناتجة عن التعديل ده** — تتسجّل في §7 عند أول تحديث للثوابت.
+3. **تسجيل `login`/`logout`** — الواجهة الجديدة فيها شاشة دخول، والأداة مابتسجّلش الدخول في D1 (القيمتين مش مسجّلتين في §7). لو اتقرر تسجيله: تتسجّل القيمتين في §7 **الأول**، وبعدين يترجّع `writeLog` في `§AUTH` ويترفع `WORKER_VERSION`.
 
 آخر تحديث: 13-09-2026
 
