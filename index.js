@@ -2,10 +2,30 @@
 // EcomModa — Duplicate Order Checker Worker (v2.3.0)
 // skills: worker-builder v3.1.0 · constants v2.2.0 — 12-09-2026
 // ============================================================
-// يستقبل Shopify webhook "orders/create" (مسجَّل من Admin UI) على مسار
+// يستقبل Shopify webhook "orders/create" (مسجَّل من Webhook Control Center) على مسار
 // مخصّص POST /webhook، يرد 200 فوري، وبعدين في الخلفية بيفحص لو فيه
 // أوردر تاني غير منفَّذ في آخر 90 يوم بنفس رقم تليفون الشحنة. لو لقى،
 // بيضيف تاج ونوت على الأوردر الجديد.
+//
+// ⚠️ CHANGELOG v2.4.0 (13-09-2026) — نقل الاشتراك من Admin-UI للـ API:
+//   الاشتراك بقى بيتعمل من **Webhook Control Center** بدل شاشة
+//   Settings → Notifications → Webhooks. الاتنين بيبعتوا لنفس المسار
+//   بالظبط، بس **بيوقّعوا بمفتاحين مختلفين تمامًا**:
+//     اشتراك الـ API (Control Center) → CLIENT_SECRET
+//     ويبهوك الـ Admin-UI             → SHOPIFY_WEBHOOK_SECRET
+//   - §HELPERS::verifyWebhookSignature: بيجرّب الاتنين ويرجّع اسم المفتاح
+//     اللي عدّى. ده بيخلي النقل بدون أي دقيقة توقف — النسخة دي بتنشر
+//     الأول وهي شغالة مع الويبهوك القديم، وبعدين يتعمل الاشتراك الجديد.
+//   - كل صف بيتكتب بقى فيه extra.signedWith — وده **الدليل الوحيد** إن
+//     التسليمات بقت جاية من الاشتراك الجديد فعلًا (مفيش أي فرق تاني ظاهر
+//     بين التسليمتين، لا في الـ payload ولا في الـ headers).
+//   - diag: سطر بيوضّح المفتاحين المقبولين.
+//   - 🔒 منطق الفحص والتاجات والنوت **ما اتلمسش ولا حرف**.
+//
+// ⚠️ بعد ما يتأكد إن كل الصفوف الجديدة بقت signedWith=client_secret
+//    وويبهوك الـ Admin-UI اتمسح من شوبيفاي: يتشال الـ fallback على
+//    SHOPIFY_WEBHOOK_SECRET من §HELPERS::verifyWebhookSignature ومن
+//    قايمة الأسرار في الداشبورد (= v2.5.0). سيبه لحد ما ده يتم.
 //
 // ⚠️ CHANGELOG v2.3.0 (12-09-2026) — واجهة عرض السجل (قراءة فقط):
 //   - §AUTH: check_employee · register_pin · verify_employee · log_logout
@@ -33,10 +53,15 @@
 //     مفقود = log + 200، مش معالجة بـ orderId="undefined").
 //
 // ENV VARS (Cloudflare Dashboard → Settings → Variables):
-//   Secret:    CLIENT_ID, CLIENT_SECRET, WORKER_SECRET
+//   Secret:    CLIENT_ID, WORKER_SECRET
+//              CLIENT_SECRET  ← مفتاح التطبيق. بيعمل حاجتين: OAuth
+//                للنداءات على شوبيفاي، **و** التحقق من توقيع الويبهوك
+//                بعد نقله لـ Webhook Control Center (اشتراكات الـ API
+//                بتتوقّع بيه).
 //              SHOPIFY_WEBHOOK_SECRET  ← مفتاح المتجر من
 //                Settings → Notifications → Webhooks (مشترك بين كل
-//                ويبهوكات الـ Admin — مش CLIENT_SECRET)
+//                ويبهوكات الـ Admin — مش CLIENT_SECRET). **مؤقت** —
+//                fallback أثناء النقل بس، يتشال في v2.5.0.
 //   Plaintext: SHOP_DOMAIN = 6c7e1a-53.myshopify.com   ← من [vars] في wrangler.toml
 //              DUPLICATE_TAG, DUPLICATE_NOTE_PREFIX (اختياريين)
 //   D1:        DB → ecommoda-dev-logs
@@ -56,10 +81,10 @@ const TOOL_NAME = 'duplicate_order_check';
 // نسخة الـ Worker — بترجع من ?action=get_config، والواجهة بتقارنها بـ
 // MIN_WORKER_VERSION بتاعتها (Standards #29). أي endpoint أو حقل جديد
 // هنا = رفع الرقم ده + رفع MIN_WORKER_VERSION في index.html في نفس التسليم.
-const WORKER_VERSION = '2.3.0';
+const WORKER_VERSION = '2.4.0';
 
-// الـ path المخصّص لاستقبال الـ Shopify webhook — لازم يطابق الـ
-// destination URL المسجَّل في Shopify Admin بالظبط (.../webhook)
+// الـ path المخصّص لاستقبال الـ Shopify webhook — لازم يطابق الـ `uri`
+// المسجَّل في Webhook Control Center بالظبط (.../webhook)
 const WEBHOOK_PATH = '/webhook';
 
 // ⚠️ NOTE (2026-07-30): نطاق البحث مقصور عمدًا على آخر 90 يوم — قرار من
@@ -113,6 +138,26 @@ async function verifyShopifyHmac(secret, rawBody, headerHmac) {
   const sig    = await crypto.subtle.sign('HMAC', key, enc.encode(rawBody));
   const digest = btoa(String.fromCharCode(...new Uint8Array(sig)));
   return safeEqual(digest, headerHmac);
+}
+
+// ── §HELPERS::verifyWebhookSignature ──
+// الاشتراك اتنقل من شاشة Admin-UI لاشتراك متسجّل من الـ API عن طريق
+// Webhook Control Center، والاتنين **بيوقّعوا بمفتاحين مختلفين تمامًا**:
+//   اشتراك الـ API       → CLIENT_SECRET           (مفتاح التطبيق)
+//   ويبهوك الـ Admin-UI  → SHOPIFY_WEBHOOK_SECRET  (مفتاح المتجر المشترك)
+// التحقق بمفتاح واحد بس معناه 401 على كل تسليمة من غير أي عرض تاني —
+// فبنجرّب الاتنين ونرجّع اسم اللي عدّى (أو null لو مفيش).
+// ⚠️ مؤقت: الـ fallback على SHOPIFY_WEBHOOK_SECRET يتشال بعد ما ويبهوك
+//    الـ Admin-UI يتمسح من شوبيفاي (راجع CHANGELOG v2.4.0 فوق).
+async function verifyWebhookSignature(env, rawBody, headerHmac) {
+  const candidates = [
+    ['client_secret',          env.CLIENT_SECRET],           // اشتراك Webhook Control Center
+    ['shopify_webhook_secret', env.SHOPIFY_WEBHOOK_SECRET],  // ويبهوك Admin-UI (مؤقت)
+  ];
+  for (const [name, secret] of candidates) {
+    if (await verifyShopifyHmac(secret, rawBody, headerHmac)) return name;
+  }
+  return null;
 }
 
 // ── §HELPERS::normalizePhone ──
@@ -558,7 +603,15 @@ export default {
         checks.push({
           ok:     true,
           label:  'Webhook path',
-          detail: `POST ${WEBHOOK_PATH} — لازم يطابق الـ destination في Shopify Admin`,
+          detail: `POST ${WEBHOOK_PATH} — لازم يطابق الـ uri في Webhook Control Center`,
+        });
+
+        checks.push({
+          ok:     !!env.CLIENT_SECRET || !!env.SHOPIFY_WEBHOOK_SECRET,
+          label:  'Webhook signing',
+          detail: 'مقبول: CLIENT_SECRET (اشتراك Webhook Control Center) · ' +
+                  'SHOPIFY_WEBHOOK_SECRET (ويبهوك Admin-UI — fallback مؤقت). ' +
+                  'راجع extra.signedWith في صفوف السجل عشان تعرف كل تسليمة جاية منين.',
         });
 
         checks.push({
@@ -628,18 +681,21 @@ async function handleWebhook(request, env, ctx) {
                   request.headers.get('X-Shopify-Webhook-Id') || null;
   const topic   = request.headers.get('X-Shopify-Topic') || null;
 
-  const valid = await verifyShopifyHmac(env.SHOPIFY_WEBHOOK_SECRET, rawBody, hmacHdr);
+  // اسم المفتاح اللي طابق التوقيع (أو null) — مش true/false، عشان نعرف
+  // التسليمة دي جاية من الاشتراك الجديد ولا من ويبهوك الـ Admin-UI القديم.
+  const signedWith = await verifyWebhookSignature(env, rawBody, hmacHdr);
 
-  if (!valid) {
+  if (!signedWith) {
     ctx.waitUntil(writeLog(env.DB, {
       tool: TOOL_NAME, type: 'hmac_failed',
-      notes: 'HMAC verification FAILED — راجع SHOPIFY_WEBHOOK_SECRET (الاسم والقيمة)',
+      notes: 'HMAC verification FAILED — لا CLIENT_SECRET ولا SHOPIFY_WEBHOOK_SECRET طابق التوقيع (راجع الاسم والقيمة)',
       extra: {
         eventId, topic,
-        hmacHeaderPresent: !!hmacHdr,
-        bodyBytes:         rawBody.length,
-        secretPresent:     !!env.SHOPIFY_WEBHOOK_SECRET,
-        envKeys:           Object.keys(env),   // يكشف أي خطأ في اسم الـ binding
+        hmacHeaderPresent:           !!hmacHdr,
+        bodyBytes:                   rawBody.length,
+        clientSecretPresent:         !!env.CLIENT_SECRET,
+        shopifyWebhookSecretPresent: !!env.SHOPIFY_WEBHOOK_SECRET,
+        envKeys:                     Object.keys(env),   // يكشف أي خطأ في اسم الـ binding
       },
     }).catch(() => {}));
     return new Response('Unauthorized', { status: 401 });
@@ -651,7 +707,7 @@ async function handleWebhook(request, env, ctx) {
   } catch {
     ctx.waitUntil(writeLog(env.DB, {
       tool: TOOL_NAME, type: 'skipped',
-      notes: 'Payload مش JSON صحيح رغم نجاح HMAC', extra: { eventId, topic },
+      notes: 'Payload مش JSON صحيح رغم نجاح HMAC', extra: { eventId, topic, signedWith },
     }).catch(() => {}));
     return json({ received: true, parsed: false }, 200);
   }
@@ -663,19 +719,19 @@ async function handleWebhook(request, env, ctx) {
     ctx.waitUntil(writeLog(env.DB, {
       tool: TOOL_NAME, type: 'skipped',
       notes: 'Payload فاضي أو من غير order.id رغم نجاح HMAC',
-      extra: { eventId, topic },
+      extra: { eventId, topic, signedWith },
     }).catch(() => {}));
     return json({ received: true, parsed: true, empty: true }, 200);
   }
 
   // رد 200 فوري — الشغل الحقيقي في الخلفية (قاعدة الـ 5 ثواني)
-  ctx.waitUntil(processOrder(order, env, eventId));
+  ctx.waitUntil(processOrder(order, env, eventId, signedWith));
 
   return json({ received: true, order: order.name }, 200);
 }
 
 // ─── §WEBHOOK::processOrder ───
-async function processOrder(order, env, eventId) {
+async function processOrder(order, env, eventId, signedWith) {
   const orderId          = String(order.id);
   const currentOrderGid  = order.admin_graphql_api_id || `gid://shopify/Order/${order.id}`;
   const currentOrderName = order.name;
@@ -690,7 +746,7 @@ async function processOrder(order, env, eventId) {
   if ((claim.meta?.changes ?? 0) === 0) {
     await writeLog(env.DB, {
       tool: TOOL_NAME, type: 'skipped', orderId, orderName: currentOrderName,
-      notes: 'اتعالج قبل كده أو لسه شغّال — إعادة الإرسال اتجاهلت', extra: { eventId },
+      notes: 'اتعالج قبل كده أو لسه شغّال — إعادة الإرسال اتجاهلت', extra: { eventId, signedWith },
     }).catch(() => {});
     return;
   }
@@ -702,7 +758,7 @@ async function processOrder(order, env, eventId) {
       await markCompleted(env, orderId);
       await writeLog(env.DB, {
         tool: TOOL_NAME, type: 'skipped', orderId, orderName: currentOrderName,
-        notes: 'مفيش رقم تليفون شحن على الأوردر',
+        notes: 'مفيش رقم تليفون شحن على الأوردر', extra: { signedWith },
       }).catch(() => {});
       return;
     }
@@ -715,7 +771,7 @@ async function processOrder(order, env, eventId) {
       await writeLog(env.DB, {
         tool: TOOL_NAME, type: 'scan_capped', orderId, orderName: currentOrderName,
         notes: `وصل لـ MAX_PAGES (${MAX_PAGES}) قبل ما يخلّص نطاق الـ ${LOOKBACK_DAYS} يوم`,
-        extra: { pagesScanned },
+        extra: { pagesScanned, signedWith },
       }).catch(() => {});
     }
 
@@ -723,7 +779,7 @@ async function processOrder(order, env, eventId) {
       await markCompleted(env, orderId);
       await writeLog(env.DB, {
         tool: TOOL_NAME, type: 'checked_clear', orderId, orderName: currentOrderName,
-        notes: `مفيش تكرار في آخر ${LOOKBACK_DAYS} يوم`, extra: { pagesScanned },
+        notes: `مفيش تكرار في آخر ${LOOKBACK_DAYS} يوم`, extra: { pagesScanned, signedWith },
       }).catch(() => {});
       return;
     }
@@ -746,7 +802,7 @@ async function processOrder(order, env, eventId) {
     await writeLog(env.DB, {
       tool: TOOL_NAME, type: 'duplicate_found', orderId, orderName: currentOrderName,
       notes: `اتحدد كتكرار محتمل لـ: ${matchedNames}`,
-      extra: { matches, pagesScanned },
+      extra: { matches, pagesScanned, signedWith },
     }).catch(() => {});
 
   } catch (err) {
@@ -755,7 +811,7 @@ async function processOrder(order, env, eventId) {
       .bind(orderId).run().catch(() => {});
     await writeLog(env.DB, {
       tool: TOOL_NAME, type: 'skipped', orderId, orderName: currentOrderName,
-      notes: `Background processing error: ${err.message}`,
+      notes: `Background processing error: ${err.message}`, extra: { signedWith },
     }).catch(() => {});
   }
 }
