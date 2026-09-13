@@ -20,3 +20,8 @@ DUPLICATE_NOTE_PREFIX = "تنبيه ⚠️ أوردرات مكررة محتمل�
 
 # ── Secrets (Dashboard فقط، وبعد أي إضافة → Promote) ──
 #   WORKER_SECRET · CLIENT_ID · CLIENT_SECRET · SHOPIFY_WEBHOOK_SECRET
+#
+# ⚠️ توقيع الويبهوك: الاشتراك اتنقل لـ Webhook Control Center، واشتراكات
+#    الـ API بتتوقّع بـ CLIENT_SECRET مش SHOPIFY_WEBHOOK_SECRET.
+#    SHOPIFY_WEBHOOK_SECRET لسه مطلوب كـ fallback لحد ما ويبهوك الـ Admin-UI
+#    يتمسح من شوبيفاي — بعدها يتشال من هنا ومن الداشبورد (v2.5.0).
