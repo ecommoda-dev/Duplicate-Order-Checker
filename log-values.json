@@ -1,0 +1,31 @@
+{
+  "tool": "duplicate_order_check",
+  "since": null,
+  "types": {
+    "checked_clear": {
+      "result": null,
+      "stage": null,
+      "desc": "مفيش تكرار في نطاق الفحص"
+    },
+    "duplicate_found": {
+      "result": null,
+      "stage": null,
+      "desc": "الأوردر اتحدد كتكرار محتمل"
+    },
+    "hmac_failed": {
+      "result": null,
+      "stage": null,
+      "desc": "فشل التحقق من HMAC — لا CLIENT_SECRET ولا SHOPIFY_WEBHOOK_SECRET طابقوا"
+    },
+    "scan_capped": {
+      "result": null,
+      "stage": null,
+      "desc": "وصل لـ MAX_PAGES قبل ما يخلّص نطاق الفحص"
+    },
+    "skipped": {
+      "result": null,
+      "stage": null,
+      "desc": "Payload مش JSON صحيح رغم نجاح HMAC"
+    }
+  }
+}
