@@ -1,7 +1,14 @@
 // ============================================================
-// EcomModa — Duplicate Order Checker Worker (v2.3.0)
-// skills: worker-builder v3.1.0 · constants v2.2.0 — 12-09-2026
+// EcomModa — Duplicate Order Checker Worker (v2.4.1)
+// skills: worker-builder v3.7.1 · constants v3.1.0 — 24-09-2026
 // ============================================================
+//
+// ⚠️ CHANGELOG v2.4.1 (24-09-2026) — الطبقة ٥: الحارس الديناميكي لقيم اللوج
+//   (worker-builder Step 7-ج). §LOG-REG أعلى §SHARED::writeLog — أي (tool,type)
+//   مش في LOG_REGISTRY بيتكتب عادي + extra._unregistered=true + UPSERT صامت
+//   في log_value_alerts (بعد الكتابة، مفيش رفض أبدًا). check-log-values.mjs
+//   اتصلّح كمان — النسخة القديمة كانت بتفوت object-shorthand (`{ tool, type }`).
+//   🔒 منطق الويبهوك والفحص والتاجات والنوت ما اتلمسش ولا حرف.
 // يستقبل Shopify webhook "orders/create" (مسجَّل من Webhook Control Center) على مسار
 // مخصّص POST /webhook، يرد 200 فوري، وبعدين في الخلفية بيفحص لو فيه
 // أوردر تاني غير منفَّذ في آخر 90 يوم بنفس رقم تليفون الشحنة. لو لقى،
@@ -81,7 +88,7 @@ const TOOL_NAME = 'duplicate_order_check';
 // نسخة الـ Worker — بترجع من ?action=get_config، والواجهة بتقارنها بـ
 // MIN_WORKER_VERSION بتاعتها (Standards #29). أي endpoint أو حقل جديد
 // هنا = رفع الرقم ده + رفع MIN_WORKER_VERSION في index.html في نفس التسليم.
-const WORKER_VERSION = '2.4.0';
+const WORKER_VERSION = '2.4.1';
 
 // الـ path المخصّص لاستقبال الـ Shopify webhook — لازم يطابق الـ `uri`
 // المسجَّل في Webhook Control Center بالظبط (.../webhook)
@@ -240,7 +247,67 @@ async function registerPin(db, username, pin) {
   return true;
 }
 
+// ════════════════════════════════════════════════════════════
+// §LOG-REG — الحارس الديناميكي لقيم اللوج (الطبقة ٥)
+// ════════════════════════════════════════════════════════════
+// قطعة الأداة دي بس من log-values.json اللي جنبها — بتتحدّث معاه في
+// نفس الـ commit. ممنوع شحن سجل الـ٣٢ أداة هنا (worker-builder Step 7-ب).
+const LOG_REGISTRY = {
+  duplicate_order_check: new Set([
+    'checked_clear', 'duplicate_found', 'hmac_failed', 'scan_capped', 'skipped',
+  ]),
+};
+
+const isRegisteredLogValue = (tool, type) => !!LOG_REGISTRY[tool]?.has(type);
+
+// UPSERT على (source_tool, tool, type) — صف واحد لكل قيمة، hits بيعدّ.
+// الحدث الكامل مش بيضيع: الصف الأصلي موجود في logs وعليه _unregistered،
+// والجدول ده فهرس مش سجل تاني — عشان كده dedupe مش صف لكل حدث.
+const LOG_ALERT_SQL = `
+  INSERT INTO log_value_alerts
+    (source_tool, tool, type, first_seen, last_seen, hits,
+     worker_version, sample_order_name, sample_employee, sample_notes)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  ON CONFLICT(source_tool, tool, type) DO UPDATE SET
+    last_seen         = excluded.last_seen,
+    hits              = log_value_alerts.hits + excluded.hits,
+    worker_version    = excluded.worker_version,
+    sample_order_name = excluded.sample_order_name,
+    sample_employee   = excluded.sample_employee,
+    sample_notes      = excluded.sample_notes,
+    status            = CASE WHEN log_value_alerts.status = 'ignored'
+                             THEN 'ignored' ELSE 'open' END
+`;
+
+// فشل التنبيه ممنوع يأثر على أي حاجة — try/catch صامت. بتجمّع التكرار
+// جوّه نفس الدفعة في صف واحد (hits) قبل ما تكتب.
+async function noteUnregisteredLogValues(db, entries) {
+  const byPair = new Map();
+  for (const e of entries) {
+    const key = `${e.tool}\u0000${e.type}`;
+    const acc = byPair.get(key);
+    if (acc) { acc.hits++; continue; }
+    byPair.set(key, { entry: e, hits: 1 });
+  }
+  const now = new Date().toISOString();
+  for (const { entry, hits } of byPair.values()) {
+    try {
+      await db.prepare(LOG_ALERT_SQL).bind(
+        TOOL_NAME, entry.tool ?? '(بدون tool)', entry.type ?? '(بدون type)',
+        now, now, hits, WORKER_VERSION ?? null,
+        entry.orderName ?? null, entry.employee ?? null,
+        entry.notes ? String(entry.notes).slice(0, 200) : null,
+      ).run();
+    } catch (e) { /* متعمّد: التنبيه فهرس، وفشله أهون من تعطيل الأداة */ }
+  }
+}
+
 async function writeLog(db, entry) {
+  const unregistered = !isRegisteredLogValue(entry.tool, entry.type);
+  const extra = unregistered
+    ? { ...(entry.extra || {}), _unregistered: true }
+    : entry.extra;
+
   await db.prepare(`
     INSERT INTO logs
       (timestamp, tool, type, employee, order_id, order_name,
@@ -259,8 +326,10 @@ async function writeLog(db, entry) {
     entry.valueBefore  ?? null,
     entry.valueAfter   ?? null,
     entry.notes        ?? null,
-    entry.extra ? JSON.stringify(entry.extra) : null
+    extra ? JSON.stringify(extra) : null
   ).run();
+
+  if (unregistered) await noteUnregisteredLogValues(db, [entry]);  // بعد الكتابة، مش قبلها
 }
 
 const LOG_EXPORT_MAX = 2000;   // سقف التصدير — بيرجع للواجهة كـ `cap`

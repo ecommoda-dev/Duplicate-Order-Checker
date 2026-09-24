@@ -96,10 +96,10 @@ git show <sha>:index.js
 | المهارة | الإصدار وقت آخر تعديل |
 |---|---|
 | ecommoda-html-builder | v7.1.0 |
-| ecommoda-worker-builder | v3.1.0 |
-| ecommoda-constants | v2.2.0 |
+| ecommoda-worker-builder | v3.7.1 |
+| ecommoda-constants | v3.1.0 |
 
-آخر مطابقة: 13-09-2026 · `index.js` v2.4.0 · `index.html` v1.0.0
+آخر مطابقة: 24-09-2026 · `index.js` v2.4.1 · `index.html` v1.0.0
 🔴 معلّقة: — لا شيء
 
 ## مسائل مفتوحة
